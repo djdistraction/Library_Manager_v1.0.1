@@ -1,5 +1,7 @@
 # Library_Manager
 
+[![CI](https://github.com/djdistraction/Library_Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/djdistraction/Library_Manager/actions/workflows/ci.yml)
+
 The uniQuE-ui Library Manager is a standalone desktop application for Windows and macOS, designed to be the definitive music library management tool for DJs, music enthusiasts, and other entertainment professionals.
 
 ## Features
