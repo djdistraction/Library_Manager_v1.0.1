@@ -81,18 +81,41 @@ Each successful build uploads artifacts that can be downloaded from the Actions 
 
 ## Local Testing
 
-To test the workflows locally before pushing:
+To test the workflows locally before pushing, you can use [act](https://github.com/nektos/act) - a tool that runs GitHub Actions locally.
+
+### Installing act:
+
+**Linux:**
+```bash
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+```
+
+**macOS:**
+```bash
+brew install act
+```
+
+**Windows:**
+```powershell
+choco install act-cli
+# or
+scoop install act
+```
+
+### Running workflows locally:
 
 ```bash
-# Install act (GitHub Actions local runner)
-# https://github.com/nektos/act
-
 # Run the CI workflow
 act -W .github/workflows/ci.yml
 
 # Run a specific platform workflow
 act -W .github/workflows/build-linux.yml
+
+# Run with verbose output
+act -v -W .github/workflows/ci.yml
 ```
+
+**Note:** Local testing with `act` may not perfectly replicate the GitHub Actions environment, especially regarding firewall behavior. The workflows have been designed to work in the actual GitHub Actions environment.
 
 ## Maintenance
 
