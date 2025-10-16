@@ -15,6 +15,19 @@ if(NOT SQLite3_FOUND)
     message(STATUS "SQLite3 not found on system, will use JUCE's built-in SQLite")
 endif()
 
+# Find Chromaprint library
+find_package(PkgConfig)
+if(PKG_CONFIG_FOUND)
+    pkg_check_modules(CHROMAPRINT libchromaprint)
+    if(CHROMAPRINT_FOUND)
+        message(STATUS "Found Chromaprint: ${CHROMAPRINT_LIBRARIES}")
+    else()
+        message(WARNING "Chromaprint not found - fingerprinting features will be disabled")
+    endif()
+else()
+    message(WARNING "pkg-config not found - cannot detect Chromaprint")
+endif()
+
 # Add Tracktion Engine (temporarily disabled due to version compatibility issues)
 # add_subdirectory(tracktion_engine/modules)
 
@@ -48,7 +61,9 @@ target_sources(LibraryManager
         Source/FileScanner.cpp
         Source/FileScanner.h
         Source/AnalysisWorker.cpp
-        Source/AnalysisWorker.h)
+        Source/AnalysisWorker.h
+        Source/AcoustIDFingerprinter.cpp
+        Source/AcoustIDFingerprinter.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
@@ -84,6 +99,13 @@ target_link_libraries(LibraryManager
 if(SQLite3_FOUND)
     target_link_libraries(LibraryManager PRIVATE SQLite::SQLite3)
     target_compile_definitions(LibraryManager PRIVATE USING_SYSTEM_SQLITE=1)
+endif()
+
+# Link Chromaprint if found
+if(CHROMAPRINT_FOUND)
+    target_include_directories(LibraryManager PRIVATE ${CHROMAPRINT_INCLUDE_DIRS})
+    target_link_libraries(LibraryManager PRIVATE ${CHROMAPRINT_LIBRARIES})
+    target_compile_definitions(LibraryManager PRIVATE HAVE_CHROMAPRINT=1)
 endif()
 
 # Compiler definitions

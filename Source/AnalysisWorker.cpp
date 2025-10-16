@@ -21,6 +21,7 @@
 */
 
 #include "AnalysisWorker.h"
+#include "AcoustIDFingerprinter.h"
 #include <juce_audio_formats/juce_audio_formats.h>
 
 //==============================================================================
@@ -191,7 +192,35 @@ bool AnalysisWorker::processAudioAnalysis(const DatabaseManager::Job& job)
     // Update progress
     {
         const juce::ScopedLock lock(jobInfoLock);
-        currentJobInfo.progress = 50;
+        currentJobInfo.progress = 40;
+    }
+    notifyProgress(currentJobInfo);
+    
+    // Generate AcoustID fingerprint
+    #ifdef HAVE_CHROMAPRINT
+    AcoustIDFingerprinter fingerprinter;
+    juce::String fingerprint;
+    int fingerprintDuration = 0;
+    
+    DBG("[AnalysisWorker] Generating fingerprint...");
+    if (fingerprinter.generateFingerprint(audioFile, fingerprint, fingerprintDuration))
+    {
+        track.acoustidFingerprint = fingerprint;
+        DBG("[AnalysisWorker] Fingerprint generated successfully");
+    }
+    else
+    {
+        DBG("[AnalysisWorker] Warning: Failed to generate fingerprint: " << fingerprinter.getLastError());
+        // Continue processing even if fingerprinting fails
+    }
+    #else
+    DBG("[AnalysisWorker] Chromaprint not available, skipping fingerprint generation");
+    #endif
+    
+    // Update progress
+    {
+        const juce::ScopedLock lock(jobInfoLock);
+        currentJobInfo.progress = 70;
     }
     notifyProgress(currentJobInfo);
     
