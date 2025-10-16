@@ -22,7 +22,7 @@ Please adhere to the standard Maven project structure:
 
 - **Readability:** Write clear, self-documenting code. Use meaningful names for variables, methods, and classes.
 - **Consistency:** Follow the existing coding style and conventions in the project.
-- **Comments:** Use inline comments to clarify complex logic. Use JavaDoc for all public classes and methods.
+- **Comments:** Use inline comments to clarify complex logic. Use Javadoc for all public classes and methods.
 - **SOLID Principles:** Strive to follow SOLID design principles for maintainable and extensible code.
 - **Error Handling:** Use structured exception handling. Avoid catching generic `Exception`. Be specific about the exceptions you catch and handle them appropriately.
 
