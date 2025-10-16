@@ -23,6 +23,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "DatabaseManager.h"
 
 //==============================================================================
 /*
@@ -43,6 +44,11 @@ public:
 private:
     //==============================================================================
     juce::Label titleLabel;
+    juce::Label statusLabel;
+    
+    std::unique_ptr<DatabaseManager> databaseManager;
+    
+    void initializeDatabase();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

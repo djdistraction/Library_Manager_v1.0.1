@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.22)
 project(LibraryManager VERSION 1.0.1)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Add JUCE subdirectory
@@ -15,8 +15,8 @@ if(NOT SQLite3_FOUND)
     message(STATUS "SQLite3 not found on system, will use JUCE's built-in SQLite")
 endif()
 
-# Add Tracktion Engine
-add_subdirectory(tracktion_engine/modules)
+# Add Tracktion Engine (temporarily disabled due to version compatibility issues)
+# add_subdirectory(tracktion_engine/modules)
 
 # Create the GUI application
 juce_add_gui_app(LibraryManager
@@ -42,7 +42,9 @@ target_sources(LibraryManager
     PRIVATE
         Source/Main.cpp
         Source/MainComponent.cpp
-        Source/MainComponent.h)
+        Source/MainComponent.h
+        Source/DatabaseManager.cpp
+        Source/DatabaseManager.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
@@ -69,10 +71,10 @@ target_link_libraries(LibraryManager
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
 
-# Link Tracktion Engine modules
-target_link_libraries(LibraryManager
-    PRIVATE
-        tracktion::tracktion_engine)
+# Link Tracktion Engine modules (temporarily disabled)
+# target_link_libraries(LibraryManager
+#     PRIVATE
+#         tracktion::tracktion_engine)
 
 # Link SQLite if found on system
 if(SQLite3_FOUND)
