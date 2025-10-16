@@ -53,6 +53,7 @@ public:
         double duration = 0.0;
         int64_t fileSize = 0;
         juce::String fileHash;
+        juce::String acoustidFingerprint;
         juce::Time dateAdded;
         juce::Time lastModified;
     };

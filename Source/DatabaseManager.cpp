@@ -70,6 +70,42 @@ bool DatabaseManager::initialize(const juce::File& databaseFile)
         }
         logInfo("Database tables created successfully");
     }
+    else
+    {
+        // Check if acoustid_fingerprint column exists and add it if not (migration)
+        sqlite3_stmt* stmt = nullptr;
+        const char* pragmaQuery = "PRAGMA table_info(Tracks)";
+        
+        if (sqlite3_prepare_v2(db, pragmaQuery, -1, &stmt, nullptr) == SQLITE_OK)
+        {
+            bool hasAcoustidColumn = false;
+            
+            while (sqlite3_step(stmt) == SQLITE_ROW)
+            {
+                const char* columnName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                if (columnName && juce::String(columnName) == "acoustid_fingerprint")
+                {
+                    hasAcoustidColumn = true;
+                    break;
+                }
+            }
+            
+            sqlite3_finalize(stmt);
+            
+            if (!hasAcoustidColumn)
+            {
+                logInfo("Adding acoustid_fingerprint column to Tracks table...");
+                if (executeSQL("ALTER TABLE Tracks ADD COLUMN acoustid_fingerprint TEXT"))
+                {
+                    logInfo("Successfully added acoustid_fingerprint column");
+                }
+                else
+                {
+                    logError("initialize", "Failed to add acoustid_fingerprint column");
+                }
+            }
+        }
+    }
     
     return true;
 }
@@ -106,6 +142,7 @@ bool DatabaseManager::createTables()
             duration REAL DEFAULT 0.0,
             file_size INTEGER DEFAULT 0,
             file_hash TEXT,
+            acoustid_fingerprint TEXT,
             date_added TEXT NOT NULL,
             last_modified TEXT NOT NULL
         )
@@ -236,8 +273,8 @@ bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
     
     const char* sql = R"(
         INSERT INTO Tracks (file_path, title, artist, album, genre, bpm, key, 
-                          duration, file_size, file_hash, date_added, last_modified)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     )";
     
     sqlite3_stmt* stmt = nullptr;
@@ -260,8 +297,9 @@ bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
     sqlite3_bind_double(stmt, 8, track.duration);
     sqlite3_bind_int64(stmt, 9, track.fileSize);
     sqlite3_bind_text(stmt, 10, track.fileHash.toRawUTF8(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 11, timeToString(track.dateAdded).toRawUTF8(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 12, timeToString(track.lastModified).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 11, track.acoustidFingerprint.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 12, timeToString(track.dateAdded).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 13, timeToString(track.lastModified).toRawUTF8(), -1, SQLITE_TRANSIENT);
     
     result = sqlite3_step(stmt);
     
@@ -290,7 +328,7 @@ bool DatabaseManager::updateTrack(const Track& track)
     
     const char* sql = R"(
         UPDATE Tracks SET file_path=?, title=?, artist=?, album=?, genre=?, bpm=?, 
-                         key=?, duration=?, file_size=?, file_hash=?, last_modified=?
+                         key=?, duration=?, file_size=?, file_hash=?, acoustid_fingerprint=?, last_modified=?
         WHERE id=?
     )";
     
@@ -314,8 +352,9 @@ bool DatabaseManager::updateTrack(const Track& track)
     sqlite3_bind_double(stmt, 8, track.duration);
     sqlite3_bind_int64(stmt, 9, track.fileSize);
     sqlite3_bind_text(stmt, 10, track.fileHash.toRawUTF8(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 11, timeToString(track.lastModified).toRawUTF8(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int64(stmt, 12, track.id);
+    sqlite3_bind_text(stmt, 11, track.acoustidFingerprint.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 12, timeToString(track.lastModified).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 13, track.id);
     
     result = sqlite3_step(stmt);
     
@@ -376,7 +415,7 @@ DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
     
     const char* sql = R"(
         SELECT id, file_path, title, artist, album, genre, bpm, key, 
-               duration, file_size, file_hash, date_added, last_modified
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
         FROM Tracks WHERE id=?
     )";
     
@@ -424,10 +463,14 @@ DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
         }
         {
             const char* val = (const char*)sqlite3_column_text(stmt, 11);
-            track.dateAdded = stringToTime(val ? juce::CharPointer_UTF8(val) : juce::String());
+            track.acoustidFingerprint = val ? juce::CharPointer_UTF8(val) : juce::String();
         }
         {
             const char* val = (const char*)sqlite3_column_text(stmt, 12);
+            track.dateAdded = stringToTime(val ? juce::CharPointer_UTF8(val) : juce::String());
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 13);
             track.lastModified = stringToTime(val ? juce::CharPointer_UTF8(val) : juce::String());
         }
     }
@@ -445,7 +488,7 @@ std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
     
     const char* sql = R"(
         SELECT id, file_path, title, artist, album, genre, bpm, key, 
-               duration, file_size, file_hash, date_added, last_modified
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
         FROM Tracks ORDER BY title
     )";
     
@@ -469,8 +512,9 @@ std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
         track.duration = sqlite3_column_double(stmt, 8);
         track.fileSize = sqlite3_column_int64(stmt, 9);
         track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
-        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11)));
-        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
         tracks.push_back(track);
     }
     
@@ -487,7 +531,7 @@ std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::St
     
     const char* sql = R"(
         SELECT id, file_path, title, artist, album, genre, bpm, key, 
-               duration, file_size, file_hash, date_added, last_modified
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
         FROM Tracks 
         WHERE title LIKE ? OR artist LIKE ? OR album LIKE ? OR genre LIKE ?
         ORDER BY title
@@ -519,8 +563,9 @@ std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::St
         track.duration = sqlite3_column_double(stmt, 8);
         track.fileSize = sqlite3_column_int64(stmt, 9);
         track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
-        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11)));
-        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
         tracks.push_back(track);
     }
     
@@ -887,7 +932,7 @@ std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t f
     
     const char* sql = R"(
         SELECT t.id, t.file_path, t.title, t.artist, t.album, t.genre, t.bpm, t.key, 
-               t.duration, t.file_size, t.file_hash, t.date_added, t.last_modified
+               t.duration, t.file_size, t.file_hash, t.acoustid_fingerprint, t.date_added, t.last_modified
         FROM Tracks t
         INNER JOIN Folder_Tracks_Link ftl ON t.id = ftl.track_id
         WHERE ftl.folder_id = ?
@@ -916,8 +961,9 @@ std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t f
         track.duration = sqlite3_column_double(stmt, 8);
         track.fileSize = sqlite3_column_int64(stmt, 9);
         track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
-        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11)));
-        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
         tracks.push_back(track);
     }
     
