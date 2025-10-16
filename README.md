@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/djdistraction/Library_Manager/actions/workflows/ci.yml/badge.svg)](https://github.com/djdistraction/Library_Manager/actions/workflows/ci.yml)
 
-The uniQuE-ui Library Manager is a standalone desktop application for Windows and macOS, designed to be the definitive music library management tool for DJs, music enthusiasts, and other entertainment professionals.
+The uniQuE-ui Library Manager is a standalone desktop application for Windows, designed to be the definitive music library management tool for DJs, music enthusiasts, and other entertainment professionals.
 
 ## Features
 
@@ -44,52 +44,14 @@ The uniQuE-ui Library Manager is a standalone desktop application for Windows an
 
 ### Prerequisites
 - CMake 3.22 or higher
-- C++20 compatible compiler (GCC 13.3+, MSVC 2019+, Clang 14+)
+- Visual Studio 2019 or higher with C++20 support
 - JUCE Framework (included as submodule)
-- SQLite3 (system library or JUCE's built-in)
+- vcpkg (for dependency management)
 
 ### Optional Dependencies
 - Chromaprint (for audio fingerprinting - will be disabled if not found)
 
 ### Build Instructions
-
-#### Linux
-```bash
-# Install dependencies
-sudo apt-get install libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
-                     libfreetype-dev libgl1-mesa-dev libasound2-dev \
-                     libfontconfig1-dev libxext-dev libxrender-dev \
-                     libxcomposite-dev libsqlite3-dev
-
-# Clone repository and submodules
-git clone https://github.com/djdistraction/Library_Manager.git
-cd Library_Manager
-git submodule update --init JUCE
-
-# Build
-mkdir build && cd build
-cmake ..
-make -j$(nproc)
-
-# Run
-./bin/Library\ Manager
-```
-
-#### macOS
-```bash
-# Clone repository and submodules
-git clone https://github.com/djdistraction/Library_Manager.git
-cd Library_Manager
-git submodule update --init JUCE
-
-# Build
-mkdir build && cd build
-cmake ..
-make -j$(sysctl -n hw.ncpu)
-
-# Run
-open "bin/Library Manager.app"
-```
 
 #### Windows
 ```powershell
@@ -98,15 +60,36 @@ git clone https://github.com/djdistraction/Library_Manager.git
 cd Library_Manager
 git submodule update --init JUCE
 
+# Install dependencies using vcpkg
+vcpkg install sqlite3:x64-windows
+
 # Build
 mkdir build
 cd build
-cmake ..
+cmake .. -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build . --config Release
 
 # Run
 .\bin\Release\Library Manager.exe
 ```
+
+**Note**: If you haven't installed vcpkg yet, follow the [vcpkg installation guide](https://github.com/microsoft/vcpkg#quick-start-windows).
+
+## System Requirements
+
+### Minimum Requirements
+- **Operating System**: Windows 10 (64-bit) or later
+- **Processor**: Intel Core i3 or AMD equivalent
+- **Memory**: 4 GB RAM
+- **Storage**: 100 MB available space (plus space for your music library database)
+- **Graphics**: DirectX 11 compatible graphics card
+
+### Recommended Requirements
+- **Operating System**: Windows 11 (64-bit)
+- **Processor**: Intel Core i5 or AMD Ryzen 5
+- **Memory**: 8 GB RAM or more
+- **Storage**: SSD with at least 500 MB available space
+- **Graphics**: DirectX 12 compatible graphics card
 
 ## Usage Guide
 
@@ -170,10 +153,10 @@ Library_Manager/
 
 ## Database Location
 
-The application stores its database in the following locations:
-- **Linux**: `~/.config/LibraryManager/library.db`
-- **macOS**: `~/Library/Application Support/LibraryManager/library.db`
+The application stores its database at:
 - **Windows**: `%APPDATA%\LibraryManager\library.db`
+
+This typically resolves to: `C:\Users\<YourUsername>\AppData\Roaming\LibraryManager\library.db`
 
 ## Supported Audio Formats
 

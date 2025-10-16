@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.22)
 
 project(LibraryManager VERSION 1.0.1)
 
+# Windows-only build configuration
+# This project is designed to build on Windows with Visual Studio
+
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -137,7 +140,7 @@ set_target_properties(LibraryManager PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
     ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
-# Platform-specific settings
+# Platform-specific settings - Windows only
 if(WIN32)
     # Windows-specific settings
     target_compile_definitions(LibraryManager PRIVATE NOMINMAX)
@@ -151,19 +154,6 @@ if(WIN32)
         # Set warning level
         target_compile_options(LibraryManager PRIVATE /W4)
     endif()
-elseif(APPLE)
-    # macOS-specific settings
-    set_target_properties(LibraryManager PROPERTIES
-        MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_GUI_IDENTIFIER "com.uniqueui.librarymanager"
-        MACOSX_BUNDLE_BUNDLE_NAME "Library Manager"
-        MACOSX_BUNDLE_BUNDLE_VERSION "1.0.1"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0.1"
-        MACOSX_BUNDLE_COPYRIGHT "Copyright (C) 2025 uniQuE-ui"
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Info.plist")
-elseif(UNIX)
-    # Linux-specific settings
-    target_link_libraries(LibraryManager PRIVATE
-        ${CMAKE_DL_LIBS}
-        pthread)
+else()
+    message(FATAL_ERROR "This project is configured for Windows-only builds. Please use a Windows system with Visual Studio.")
 endif()
