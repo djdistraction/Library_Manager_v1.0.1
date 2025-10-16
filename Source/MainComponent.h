@@ -26,6 +26,7 @@
 #include "DatabaseManager.h"
 #include "FileScanner.h"
 #include "AnalysisWorker.h"
+#include <atomic>
 
 //==============================================================================
 /*
@@ -60,6 +61,7 @@ private:
     
     double progress = 0.0;
     juce::String currentStatus;
+    std::atomic<bool> isScanningActive{false};
     
     void initializeDatabase();
     void startScan();

@@ -24,7 +24,8 @@
 
 //==============================================================================
 MainComponent::MainComponent()
-    : progressBar(progress)  // Initialize progress bar with progress variable
+    : progress(0.0),  // Initialize progress before progressBar
+      progressBar(progress)  // Initialize progress bar with progress variable
 {
     // Set the main component size
     setSize (1200, 800);
@@ -75,8 +76,8 @@ MainComponent::MainComponent()
     // Initialize database
     initializeDatabase();
     
-    // Start timer for UI updates
-    startTimer (100);  // Update every 100ms
+    // Start timer for UI updates (500ms is sufficient for status updates)
+    startTimer (500);  // Update every 500ms
 }
 
 MainComponent::~MainComponent()
@@ -142,12 +143,15 @@ void MainComponent::initializeDatabase()
 
 void MainComponent::startScan()
 {
-    // Open file chooser to select a directory
-    auto chooser = std::make_shared<juce::FileChooser>("Select music library folder");
+    // Use a simple FileChooser without shared_ptr
+    auto* chooser = new juce::FileChooser("Select music library folder");
     
     chooser->launchAsync(juce::FileBrowserComponent::openMode | 
                          juce::FileBrowserComponent::canSelectDirectories,
                          [this, chooser](const juce::FileChooser& fc) {
+        // Capture chooser to ensure it's deleted after use
+        std::unique_ptr<juce::FileChooser> deleter(const_cast<juce::FileChooser*>(chooser));
+        
         auto results = fc.getResults();
         if (results.isEmpty())
             return;
@@ -159,11 +163,22 @@ void MainComponent::startScan()
         stopButton.setEnabled(true);
         progress = 0.0;
         
-        // Run scan in background thread
+        // Store scanning state flag
+        isScanningActive = true;
+        
+        // Run scan in background thread with proper lifetime management
         juce::Thread::launch([this, directory]() {
+            if (!isScanningActive)
+                return;
+                
             fileScanner->setProgressCallback([this](int current, int total) {
+                if (!isScanningActive)
+                    return;
+                    
                 progress = (double)current / (double)total;
                 juce::MessageManager::callAsync([this, current, total]() {
+                    if (!isScanningActive)
+                        return;
                     progressLabel.setText("Scanning: " + juce::String(current) + "/" + juce::String(total),
                                         juce::dontSendNotification);
                 });
@@ -172,10 +187,13 @@ void MainComponent::startScan()
             int filesFound = fileScanner->scanDirectory(directory, true);
             
             juce::MessageManager::callAsync([this, filesFound]() {
+                if (!isScanningActive)
+                    return;
                 addLogMessage("Scan complete: " + juce::String(filesFound) + " files queued for analysis");
                 scanButton.setEnabled(true);
                 stopButton.setEnabled(false);
                 progress = 0.0;
+                isScanningActive = false;
             });
         });
     });
@@ -183,6 +201,7 @@ void MainComponent::startScan()
 
 void MainComponent::stopScan()
 {
+    isScanningActive = false;
     if (fileScanner)
     {
         fileScanner->cancelScan();
