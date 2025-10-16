@@ -207,6 +207,20 @@ bool AnalysisWorker::processAudioAnalysis(const DatabaseManager::Job& job)
     {
         track.acoustidFingerprint = fingerprint;
         DBG("[AnalysisWorker] Fingerprint generated successfully");
+        
+        // Check for duplicates by fingerprint
+        auto duplicates = databaseManager.findTracksByFingerprint(fingerprint);
+        if (duplicates.size() > 0)
+        {
+            DBG("[AnalysisWorker] Found " << duplicates.size() << " potential duplicate(s):");
+            for (const auto& dup : duplicates)
+            {
+                if (dup.filePath != track.filePath)  // Don't report the file as duplicate of itself
+                {
+                    DBG("[AnalysisWorker]   - " << dup.filePath);
+                }
+            }
+        }
     }
     else
     {

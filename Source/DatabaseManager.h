@@ -111,6 +111,13 @@ public:
     std::vector<Track> getAllTracks() const;
     std::vector<Track> searchTracks(const juce::String& searchTerm) const;
     
+    /**
+     * Find tracks with the same AcoustID fingerprint (potential duplicates).
+     * @param fingerprint The AcoustID fingerprint to search for
+     * @return Vector of tracks with matching fingerprint
+     */
+    std::vector<Track> findTracksByFingerprint(const juce::String& fingerprint) const;
+    
     //==============================================================================
     // CRUD operations for VirtualFolders
     

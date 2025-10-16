@@ -573,6 +573,53 @@ std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::St
     return tracks;
 }
 
+std::vector<DatabaseManager::Track> DatabaseManager::findTracksByFingerprint(const juce::String& fingerprint) const
+{
+    std::vector<Track> tracks;
+    
+    if (!isOpen() || fingerprint.isEmpty())
+        return tracks;
+    
+    const char* sql = R"(
+        SELECT id, file_path, title, artist, album, genre, bpm, key, 
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
+        FROM Tracks 
+        WHERE acoustid_fingerprint = ?
+        ORDER BY title
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return tracks;
+    
+    sqlite3_bind_text(stmt, 1, fingerprint.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        Track track;
+        track.id = sqlite3_column_int64(stmt, 0);
+        track.filePath = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
+        track.title = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
+        track.artist = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        track.album = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 4));
+        track.genre = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
+        track.bpm = sqlite3_column_int(stmt, 6);
+        track.key = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7));
+        track.duration = sqlite3_column_double(stmt, 8);
+        track.fileSize = sqlite3_column_int64(stmt, 9);
+        track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
+        tracks.push_back(track);
+    }
+    
+    sqlite3_finalize(stmt);
+    return tracks;
+}
+
 //==============================================================================
 // CRUD operations for VirtualFolders
 
