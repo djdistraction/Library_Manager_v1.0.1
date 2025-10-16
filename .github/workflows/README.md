@@ -87,7 +87,17 @@ To test the workflows locally before pushing, you can use [act](https://github.c
 
 **Linux:**
 ```bash
-curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+# Using package manager (recommended):
+# For Debian/Ubuntu (if available in repos)
+sudo apt-get install act
+
+# Using the install script (verify the script first):
+# Visit https://github.com/nektos/act/blob/master/install.sh to review
+curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Or download and install manually:
+# 1. Download from https://github.com/nektos/act/releases
+# 2. Extract and move to /usr/local/bin/
 ```
 
 **macOS:**
@@ -97,9 +107,13 @@ brew install act
 
 **Windows:**
 ```powershell
+# Using Chocolatey
 choco install act-cli
-# or
+
+# Or using Scoop
 scoop install act
+
+# Or download from https://github.com/nektos/act/releases
 ```
 
 ### Running workflows locally:
