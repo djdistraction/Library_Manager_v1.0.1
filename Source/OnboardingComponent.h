@@ -52,14 +52,14 @@ private:
     juce::TextButton selectFilesButton;
     juce::TextButton startTestButton;
     juce::TextButton completeButton;
-    juce::ProgressBar progressBar;
-    juce::TextEditor resultsViewer;
     juce::Label statusLabel;
+    juce::TextEditor resultsViewer;
     
     // State
     std::vector<juce::File> selectedFiles;
     juce::File tempDirectory;
     double progress = 0.0;
+    juce::ProgressBar progressBar;
     bool testInProgress = false;
     bool testComplete = false;
     

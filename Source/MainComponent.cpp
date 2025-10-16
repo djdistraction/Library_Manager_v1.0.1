@@ -32,21 +32,21 @@ MainComponent::MainComponent()
 
     // Setup title label
     titleLabel.setText ("Library Manager v1.0.1", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (28.0f, juce::Font::bold));
+    titleLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
     titleLabel.setJustificationType (juce::Justification::centredLeft);
     titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
     
     // Setup status label (bottom status bar)
     statusLabel.setText ("Initializing...", juce::dontSendNotification);
-    statusLabel.setFont (juce::Font (12.0f));
+    statusLabel.setFont (juce::FontOptions (12.0f));
     statusLabel.setJustificationType (juce::Justification::centredLeft);
     statusLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (statusLabel);
     
     // Setup progress label
     progressLabel.setText ("Ready", juce::dontSendNotification);
-    progressLabel.setFont (juce::Font (11.0f));
+    progressLabel.setFont (juce::FontOptions (11.0f));
     progressLabel.setJustificationType (juce::Justification::centredRight);
     progressLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (progressLabel);

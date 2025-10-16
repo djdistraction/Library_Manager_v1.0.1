@@ -58,7 +58,6 @@ private:
     juce::TextButton scanButton;
     juce::TextButton exportButton;
     juce::TextButton newPlaylistButton;
-    juce::ProgressBar progressBar;
     juce::Label progressLabel;
     
     std::unique_ptr<LibraryTableComponent> libraryTable;
@@ -73,6 +72,7 @@ private:
     
     // State
     double progress = 0.0;
+    juce::ProgressBar progressBar;
     juce::String currentStatus;
     std::atomic<bool> isScanningActive{false};
     bool showOnboarding = true;

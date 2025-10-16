@@ -28,7 +28,7 @@ OnboardingComponent::OnboardingComponent(DatabaseManager& dbManager)
 {
     // Setup title
     titleLabel.setText("Welcome to Library Manager", juce::dontSendNotification);
-    titleLabel.setFont(juce::Font(24.0f, juce::Font::bold));
+    titleLabel.setFont(juce::FontOptions(24.0f, juce::Font::bold));
     titleLabel.setJustificationType(juce::Justification::centred);
     titleLabel.setColour(juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible(titleLabel);
@@ -42,7 +42,7 @@ OnboardingComponent::OnboardingComponent(DatabaseManager& dbManager)
         "3. Show you before/after metadata comparison\n\n"
         "Your original files will not be modified.",
         juce::dontSendNotification);
-    instructionLabel.setFont(juce::Font(14.0f));
+    instructionLabel.setFont(juce::FontOptions(14.0f));
     instructionLabel.setJustificationType(juce::Justification::centredLeft);
     instructionLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(instructionLabel);
@@ -67,7 +67,7 @@ OnboardingComponent::OnboardingComponent(DatabaseManager& dbManager)
     
     // Setup status label
     statusLabel.setText("Ready to begin", juce::dontSendNotification);
-    statusLabel.setFont(juce::Font(12.0f));
+    statusLabel.setFont(juce::FontOptions(12.0f));
     statusLabel.setJustificationType(juce::Justification::centred);
     statusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible(statusLabel);
