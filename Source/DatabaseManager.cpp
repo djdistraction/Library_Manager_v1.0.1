@@ -1809,12 +1809,15 @@ std::vector<DatabaseManager::Track> DatabaseManager::evaluateSmartPlaylist(const
     if (!isOpen() || !folder.isSmartPlaylist || folder.smartCriteria.isEmpty())
         return tracks;
     
-    // Parse smart criteria (simplified JSON-like format)
+    // Parse smart criteria
     // Format: "artist:value;genre:value;bpmMin:120;bpmMax:140"
     juce::StringArray criteria;
     criteria.addTokens(folder.smartCriteria, ";", "");
     
+    // Build parameterized query to prevent SQL injection
     juce::String whereClause = "WHERE 1=1";
+    std::vector<std::pair<juce::String, juce::String>> stringParams;  // For LIKE queries
+    std::vector<std::pair<juce::String, int>> intParams;  // For numeric comparisons
     
     for (const auto& criterion : criteria)
     {
@@ -1825,18 +1828,49 @@ std::vector<DatabaseManager::Track> DatabaseManager::evaluateSmartPlaylist(const
         auto key = parts[0].trim();
         auto value = parts[1].trim();
         
+        // Escape single quotes in string values to prevent SQL injection
+        auto escapedValue = value.replace("'", "''");
+        
         if (key == "artist")
-            whereClause += " AND artist LIKE '%" + value + "%'";
+        {
+            whereClause += " AND artist LIKE ?";
+            stringParams.push_back({"artist", "%" + escapedValue + "%"});
+        }
         else if (key == "album")
-            whereClause += " AND album LIKE '%" + value + "%'";
+        {
+            whereClause += " AND album LIKE ?";
+            stringParams.push_back({"album", "%" + escapedValue + "%"});
+        }
         else if (key == "genre")
-            whereClause += " AND genre LIKE '%" + value + "%'";
+        {
+            whereClause += " AND genre LIKE ?";
+            stringParams.push_back({"genre", "%" + escapedValue + "%"});
+        }
         else if (key == "key")
-            whereClause += " AND key = '" + value + "'";
+        {
+            whereClause += " AND key = ?";
+            stringParams.push_back({"key", escapedValue});
+        }
         else if (key == "bpmMin")
-            whereClause += " AND bpm >= " + value;
+        {
+            // Validate numeric value
+            int bpmValue = value.getIntValue();
+            if (bpmValue > 0)
+            {
+                whereClause += " AND bpm >= ?";
+                intParams.push_back({"bpmMin", bpmValue});
+            }
+        }
         else if (key == "bpmMax")
-            whereClause += " AND bpm <= " + value;
+        {
+            // Validate numeric value
+            int bpmValue = value.getIntValue();
+            if (bpmValue > 0)
+            {
+                whereClause += " AND bpm <= ?";
+                intParams.push_back({"bpmMax", bpmValue});
+            }
+        }
     }
     
     juce::String sql = R"(
@@ -1848,7 +1882,21 @@ std::vector<DatabaseManager::Track> DatabaseManager::evaluateSmartPlaylist(const
     int result = sqlite3_prepare_v2(db, sql.toRawUTF8(), -1, &stmt, nullptr);
     
     if (result != SQLITE_OK)
+    {
+        DBG("[DatabaseManager ERROR] Failed to prepare smart playlist query: " << sqlite3_errmsg(db));
         return tracks;
+    }
+    
+    // Bind parameters
+    int paramIndex = 1;
+    for (const auto& param : stringParams)
+    {
+        sqlite3_bind_text(stmt, paramIndex++, param.second.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    }
+    for (const auto& param : intParams)
+    {
+        sqlite3_bind_int(stmt, paramIndex++, param.second);
+    }
     
     while (sqlite3_step(stmt) == SQLITE_ROW)
     {

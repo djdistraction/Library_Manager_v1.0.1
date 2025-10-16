@@ -65,7 +65,7 @@ public:
         juce::String description;
         juce::Time dateCreated;
         bool isSmartPlaylist = false;
-        juce::String smartCriteria;  // JSON string with filter criteria
+        juce::String smartCriteria;  // Semicolon-delimited string with filter criteria (key:value pairs)
     };
     
     struct FolderTrackLink
@@ -143,7 +143,7 @@ public:
     
     /**
      * Evaluate smart playlist criteria and return matching tracks.
-     * Smart criteria format: JSON with filters like {"artist":"...", "genre":"...", "bpmMin":120, "bpmMax":140}
+     * Smart criteria format: Semicolon-delimited key:value pairs like "artist:value;genre:value;bpmMin:120;bpmMax:140"
      */
     std::vector<Track> evaluateSmartPlaylist(const VirtualFolder& folder) const;
     
