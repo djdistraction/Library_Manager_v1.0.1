@@ -45,8 +45,16 @@ public:
     void paintRowBackground(juce::Graphics& g, int rowNumber, int width, int height, bool rowIsSelected) override;
     void paintCell(juce::Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
     
+    // Drag and drop support
+    juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
+    
+    // Context menu and batch operations
+    void cellClicked(int rowNumber, int columnId, const juce::MouseEvent& e) override;
+    
     void refreshTableContent();
     void setSearchFilter(const juce::String& searchText);
+    
+    const std::vector<DatabaseManager::Track>& getTracks() const { return tracks; }
 
 private:
     DatabaseManager& databaseManager;

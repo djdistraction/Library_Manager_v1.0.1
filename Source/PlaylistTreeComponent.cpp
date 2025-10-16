@@ -163,3 +163,75 @@ void PlaylistTreeComponent::PlaylistItem::itemClicked(const juce::MouseEvent& e)
         });
     }
 }
+
+bool PlaylistTreeComponent::PlaylistItem::isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails)
+{
+    // Accept drops if the source contains track IDs (from LibraryTableComponent)
+    return dragSourceDetails.description.isArray();
+}
+
+void PlaylistTreeComponent::PlaylistItem::itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails, int insertIndex)
+{
+    juce::ignoreUnused(insertIndex);
+    
+    // Get the array of track IDs from the drag source
+    if (dragSourceDetails.description.isArray())
+    {
+        juce::Array<juce::var>* trackIds = dragSourceDetails.description.getArray();
+        
+        if (trackIds != nullptr)
+        {
+            int successCount = 0;
+            int skipCount = 0;
+            
+            // Add each track to this playlist
+            for (const auto& trackIdVar : *trackIds)
+            {
+                int64_t trackId = static_cast<int64_t>(static_cast<int>(trackIdVar));
+                
+                // Check if track is already in this folder
+                auto existingTracks = databaseManager.getTracksInFolder(virtualFolder.id);
+                bool alreadyInFolder = false;
+                
+                for (const auto& track : existingTracks)
+                {
+                    if (track.id == trackId)
+                    {
+                        alreadyInFolder = true;
+                        break;
+                    }
+                }
+                
+                if (!alreadyInFolder)
+                {
+                    // Create link between track and folder
+                    DatabaseManager::FolderTrackLink link;
+                    link.folderId = virtualFolder.id;
+                    link.trackId = trackId;
+                    link.displayOrder = static_cast<int>(existingTracks.size());
+                    link.dateAdded = juce::Time::getCurrentTime();
+                    
+                    int64_t linkId = 0;
+                    if (databaseManager.addFolderTrackLink(link, linkId))
+                    {
+                        successCount++;
+                    }
+                }
+                else
+                {
+                    skipCount++;
+                }
+            }
+            
+            DBG("[PlaylistTreeComponent] Added " << successCount << " track(s) to playlist '" 
+                << virtualFolder.name << "' (skipped " << skipCount << " already in playlist)");
+            
+            // Update verification status
+            auto tracks = databaseManager.getTracksInFolder(virtualFolder.id);
+            isVerified = !tracks.empty();
+            
+            // Trigger repaint
+            repaintItem();
+        }
+    }
+}

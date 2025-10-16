@@ -64,6 +64,8 @@ public:
         juce::String name;
         juce::String description;
         juce::Time dateCreated;
+        bool isSmartPlaylist = false;
+        juce::String smartCriteria;  // Semicolon-delimited string with filter criteria (key:value pairs)
     };
     
     struct FolderTrackLink
@@ -86,6 +88,18 @@ public:
         juce::Time dateCompleted;
         juce::String errorMessage;
         int progress = 0;
+    };
+    
+    struct CuePoint
+    {
+        int64_t id = 0;
+        int64_t trackId = 0;
+        double position = 0.0;  // Position in seconds
+        juce::String name;
+        int type = 0;  // 0=Memory Cue, 1=Hot Cue, 2=Loop In, 3=Loop Out
+        int hotCueNumber = -1;  // Hot cue number (0-7), -1 for non-hot cues
+        juce::String color;  // Hex color code
+        juce::Time dateCreated;
     };
 
     //==============================================================================
@@ -127,6 +141,12 @@ public:
     VirtualFolder getVirtualFolder(int64_t folderId) const;
     std::vector<VirtualFolder> getAllVirtualFolders() const;
     
+    /**
+     * Evaluate smart playlist criteria and return matching tracks.
+     * Smart criteria format: Semicolon-delimited key:value pairs like "artist:value;genre:value;bpmMin:120;bpmMax:140"
+     */
+    std::vector<Track> evaluateSmartPlaylist(const VirtualFolder& folder) const;
+    
     //==============================================================================
     // CRUD operations for Folder_Tracks_Link
     
@@ -148,6 +168,16 @@ public:
     std::vector<Job> getJobsByStatus(const juce::String& status) const;
     
     //==============================================================================
+    // CRUD operations for CuePoints
+    
+    bool addCuePoint(const CuePoint& cuePoint, int64_t& outId);
+    bool updateCuePoint(const CuePoint& cuePoint);
+    bool deleteCuePoint(int64_t cuePointId);
+    CuePoint getCuePoint(int64_t cuePointId) const;
+    std::vector<CuePoint> getCuePointsForTrack(int64_t trackId) const;
+    bool deleteAllCuePointsForTrack(int64_t trackId);
+    
+    //==============================================================================
     // Transaction support
     
     bool beginTransaction();
@@ -161,6 +191,7 @@ private:
     //==============================================================================
     sqlite3* db = nullptr;
     juce::String lastError;
+    mutable juce::CriticalSection dbMutex;  // Thread safety for database operations
     
     // Helper methods
     bool createTables();

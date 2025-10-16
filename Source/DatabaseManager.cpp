@@ -35,8 +35,14 @@ DatabaseManager::~DatabaseManager()
 //==============================================================================
 bool DatabaseManager::initialize(const juce::File& databaseFile)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     // Close any existing connection
-    close();
+    if (db != nullptr)
+    {
+        sqlite3_close(db);
+        db = nullptr;
+    }
     
     // Check if database file exists
     bool databaseExists = databaseFile.existsAsFile();
@@ -105,6 +111,41 @@ bool DatabaseManager::initialize(const juce::File& databaseFile)
                 }
             }
         }
+        
+        // Check if smart playlist columns exist in VirtualFolders and add if not
+        stmt = nullptr;
+        const char* folderPragmaQuery = "PRAGMA table_info(VirtualFolders)";
+        
+        if (sqlite3_prepare_v2(db, folderPragmaQuery, -1, &stmt, nullptr) == SQLITE_OK)
+        {
+            bool hasSmartColumns = false;
+            
+            while (sqlite3_step(stmt) == SQLITE_ROW)
+            {
+                const char* columnName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                if (columnName && juce::String(columnName) == "is_smart_playlist")
+                {
+                    hasSmartColumns = true;
+                    break;
+                }
+            }
+            
+            sqlite3_finalize(stmt);
+            
+            if (!hasSmartColumns)
+            {
+                logInfo("Adding smart playlist columns to VirtualFolders table...");
+                if (executeSQL("ALTER TABLE VirtualFolders ADD COLUMN is_smart_playlist INTEGER DEFAULT 0") &&
+                    executeSQL("ALTER TABLE VirtualFolders ADD COLUMN smart_criteria TEXT"))
+                {
+                    logInfo("Successfully added smart playlist columns");
+                }
+                else
+                {
+                    logError("initialize", "Failed to add smart playlist columns");
+                }
+            }
+        }
     }
     
     return true;
@@ -112,6 +153,8 @@ bool DatabaseManager::initialize(const juce::File& databaseFile)
 
 void DatabaseManager::close()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (db != nullptr)
     {
         sqlite3_close(db);
@@ -122,6 +165,7 @@ void DatabaseManager::close()
 
 bool DatabaseManager::isOpen() const
 {
+    const juce::ScopedLock lock(dbMutex);
     return db != nullptr;
 }
 
@@ -212,11 +256,33 @@ bool DatabaseManager::createTables()
     executeSQL("CREATE INDEX IF NOT EXISTS idx_jobs_status ON Jobs(status)");
     executeSQL("CREATE INDEX IF NOT EXISTS idx_jobs_type ON Jobs(job_type)");
     
+    // Create CuePoints table
+    const char* createCuePointsTable = R"(
+        CREATE TABLE IF NOT EXISTS CuePoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id INTEGER NOT NULL,
+            position REAL NOT NULL,
+            name TEXT,
+            type INTEGER DEFAULT 0,
+            hot_cue_number INTEGER DEFAULT -1,
+            color TEXT,
+            date_created TEXT NOT NULL,
+            FOREIGN KEY (track_id) REFERENCES Tracks(id) ON DELETE CASCADE
+        )
+    )";
+    
+    if (!executeSQL(createCuePointsTable))
+        return false;
+    
+    executeSQL("CREATE INDEX IF NOT EXISTS idx_cuepoints_track ON CuePoints(track_id)");
+    
     return true;
 }
 
 bool DatabaseManager::executeSQL(const juce::String& sql)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -239,6 +305,8 @@ bool DatabaseManager::executeSQL(const juce::String& sql)
 
 bool DatabaseManager::checkTableExists(const juce::String& tableName) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
         return false;
     
@@ -265,6 +333,8 @@ bool DatabaseManager::checkTableExists(const juce::String& tableName) const
 
 bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -320,6 +390,8 @@ bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
 
 bool DatabaseManager::updateTrack(const Track& track)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -373,6 +445,8 @@ bool DatabaseManager::updateTrack(const Track& track)
 
 bool DatabaseManager::deleteTrack(int64_t trackId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -408,6 +482,8 @@ bool DatabaseManager::deleteTrack(int64_t trackId)
 
 DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     Track track;
     
     if (!isOpen())
@@ -481,6 +557,8 @@ DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
 
 std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -524,6 +602,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
 
 std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::String& searchTerm) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -575,6 +655,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::St
 
 std::vector<DatabaseManager::Track> DatabaseManager::findTracksByFingerprint(const juce::String& fingerprint) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen() || fingerprint.isEmpty())
@@ -625,6 +707,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::findTracksByFingerprint(con
 
 bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -632,8 +716,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
     }
     
     const char* sql = R"(
-        INSERT INTO VirtualFolders (name, description, date_created)
-        VALUES (?, ?, ?)
+        INSERT INTO VirtualFolders (name, description, date_created, is_smart_playlist, smart_criteria)
+        VALUES (?, ?, ?, ?, ?)
     )";
     
     sqlite3_stmt* stmt = nullptr;
@@ -649,6 +733,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
     sqlite3_bind_text(stmt, 1, folder.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, folder.description.toRawUTF8(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, timeToString(folder.dateCreated).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, folder.isSmartPlaylist ? 1 : 0);
+    sqlite3_bind_text(stmt, 5, folder.smartCriteria.toRawUTF8(), -1, SQLITE_TRANSIENT);
     
     result = sqlite3_step(stmt);
     
@@ -669,6 +755,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
 
 bool DatabaseManager::updateVirtualFolder(const VirtualFolder& folder)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -711,6 +799,8 @@ bool DatabaseManager::updateVirtualFolder(const VirtualFolder& folder)
 
 bool DatabaseManager::deleteVirtualFolder(int64_t folderId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -746,13 +836,15 @@ bool DatabaseManager::deleteVirtualFolder(int64_t folderId)
 
 DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     VirtualFolder folder;
     
     if (!isOpen())
         return folder;
     
     const char* sql = R"(
-        SELECT id, name, description, date_created
+        SELECT id, name, description, date_created, is_smart_playlist, smart_criteria
         FROM VirtualFolders WHERE id=?
     )";
     
@@ -770,6 +862,8 @@ DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderI
         folder.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
         folder.description = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
         folder.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3)));
+        folder.isSmartPlaylist = sqlite3_column_int(stmt, 4) != 0;
+        folder.smartCriteria = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
     }
     
     sqlite3_finalize(stmt);
@@ -778,13 +872,15 @@ DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderI
 
 std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolders() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<VirtualFolder> folders;
     
     if (!isOpen())
         return folders;
     
     const char* sql = R"(
-        SELECT id, name, description, date_created
+        SELECT id, name, description, date_created, is_smart_playlist, smart_criteria
         FROM VirtualFolders ORDER BY name
     )";
     
@@ -801,6 +897,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolder
         folder.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
         folder.description = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
         folder.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3)));
+        folder.isSmartPlaylist = sqlite3_column_int(stmt, 4) != 0;
+        folder.smartCriteria = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
         folders.push_back(folder);
     }
     
@@ -813,6 +911,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolder
 
 bool DatabaseManager::addFolderTrackLink(const FolderTrackLink& link, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -858,6 +958,8 @@ bool DatabaseManager::addFolderTrackLink(const FolderTrackLink& link, int64_t& o
 
 bool DatabaseManager::updateFolderTrackLink(const FolderTrackLink& link)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -901,6 +1003,8 @@ bool DatabaseManager::updateFolderTrackLink(const FolderTrackLink& link)
 
 bool DatabaseManager::deleteFolderTrackLink(int64_t linkId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -936,6 +1040,8 @@ bool DatabaseManager::deleteFolderTrackLink(int64_t linkId)
 
 bool DatabaseManager::removeTrackFromFolder(int64_t folderId, int64_t trackId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -972,6 +1078,8 @@ bool DatabaseManager::removeTrackFromFolder(int64_t folderId, int64_t trackId)
 
 std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t folderId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -1020,6 +1128,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t f
 
 std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getFoldersForTrack(int64_t trackId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<VirtualFolder> folders;
     
     if (!isOpen())
@@ -1060,6 +1170,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getFoldersForTrack(
 
 bool DatabaseManager::addJob(const Job& job, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1119,6 +1231,8 @@ bool DatabaseManager::addJob(const Job& job, int64_t& outId)
 
 bool DatabaseManager::updateJob(const Job& job)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1176,6 +1290,8 @@ bool DatabaseManager::updateJob(const Job& job)
 
 bool DatabaseManager::deleteJob(int64_t jobId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1211,6 +1327,8 @@ bool DatabaseManager::deleteJob(int64_t jobId)
 
 DatabaseManager::Job DatabaseManager::getJob(int64_t jobId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     Job job;
     
     if (!isOpen())
@@ -1275,6 +1393,8 @@ DatabaseManager::Job DatabaseManager::getJob(int64_t jobId) const
 
 std::vector<DatabaseManager::Job> DatabaseManager::getAllJobs() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Job> jobs;
     
     if (!isOpen())
@@ -1318,6 +1438,8 @@ std::vector<DatabaseManager::Job> DatabaseManager::getAllJobs() const
 
 std::vector<DatabaseManager::Job> DatabaseManager::getJobsByStatus(const juce::String& status) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Job> jobs;
     
     if (!isOpen())
@@ -1366,17 +1488,278 @@ std::vector<DatabaseManager::Job> DatabaseManager::getJobsByStatus(const juce::S
 
 bool DatabaseManager::beginTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("BEGIN TRANSACTION");
 }
 
 bool DatabaseManager::commitTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("COMMIT");
 }
 
 bool DatabaseManager::rollbackTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("ROLLBACK");
+}
+
+//==============================================================================
+// CRUD operations for CuePoints
+
+bool DatabaseManager::addCuePoint(const CuePoint& cuePoint, int64_t& outId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = R"(
+        INSERT INTO CuePoints (track_id, position, name, type, hot_cue_number, color, date_created)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("addCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePoint.trackId);
+    sqlite3_bind_double(stmt, 2, cuePoint.position);
+    sqlite3_bind_text(stmt, 3, cuePoint.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, cuePoint.type);
+    sqlite3_bind_int(stmt, 5, cuePoint.hotCueNumber);
+    sqlite3_bind_text(stmt, 6, cuePoint.color.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, timeToString(cuePoint.dateCreated).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to insert cue point: ") + sqlite3_errmsg(db);
+        logError("addCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    outId = sqlite3_last_insert_rowid(db);
+    sqlite3_finalize(stmt);
+    
+    logInfo("Cue point added with ID: " + juce::String(outId));
+    return true;
+}
+
+bool DatabaseManager::updateCuePoint(const CuePoint& cuePoint)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = R"(
+        UPDATE CuePoints SET track_id=?, position=?, name=?, type=?, hot_cue_number=?, color=?
+        WHERE id=?
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("updateCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePoint.trackId);
+    sqlite3_bind_double(stmt, 2, cuePoint.position);
+    sqlite3_bind_text(stmt, 3, cuePoint.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, cuePoint.type);
+    sqlite3_bind_int(stmt, 5, cuePoint.hotCueNumber);
+    sqlite3_bind_text(stmt, 6, cuePoint.color.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 7, cuePoint.id);
+    
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to update cue point: ") + sqlite3_errmsg(db);
+        logError("updateCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("Cue point updated: " + juce::String(cuePoint.id));
+    return true;
+}
+
+bool DatabaseManager::deleteCuePoint(int64_t cuePointId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = "DELETE FROM CuePoints WHERE id=?";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("deleteCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePointId);
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to delete cue point: ") + sqlite3_errmsg(db);
+        logError("deleteCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("Cue point deleted: " + juce::String(cuePointId));
+    return true;
+}
+
+DatabaseManager::CuePoint DatabaseManager::getCuePoint(int64_t cuePointId) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    CuePoint cuePoint;
+    
+    if (!isOpen())
+        return cuePoint;
+    
+    const char* sql = R"(
+        SELECT id, track_id, position, name, type, hot_cue_number, color, date_created
+        FROM CuePoints WHERE id=?
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return cuePoint;
+    
+    sqlite3_bind_int64(stmt, 1, cuePointId);
+    
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        cuePoint.id = sqlite3_column_int64(stmt, 0);
+        cuePoint.trackId = sqlite3_column_int64(stmt, 1);
+        cuePoint.position = sqlite3_column_double(stmt, 2);
+        cuePoint.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        cuePoint.type = sqlite3_column_int(stmt, 4);
+        cuePoint.hotCueNumber = sqlite3_column_int(stmt, 5);
+        cuePoint.color = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 6));
+        cuePoint.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7)));
+    }
+    
+    sqlite3_finalize(stmt);
+    return cuePoint;
+}
+
+std::vector<DatabaseManager::CuePoint> DatabaseManager::getCuePointsForTrack(int64_t trackId) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    std::vector<CuePoint> cuePoints;
+    
+    if (!isOpen())
+        return cuePoints;
+    
+    const char* sql = R"(
+        SELECT id, track_id, position, name, type, hot_cue_number, color, date_created
+        FROM CuePoints WHERE track_id=? ORDER BY position
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return cuePoints;
+    
+    sqlite3_bind_int64(stmt, 1, trackId);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        CuePoint cuePoint;
+        cuePoint.id = sqlite3_column_int64(stmt, 0);
+        cuePoint.trackId = sqlite3_column_int64(stmt, 1);
+        cuePoint.position = sqlite3_column_double(stmt, 2);
+        cuePoint.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        cuePoint.type = sqlite3_column_int(stmt, 4);
+        cuePoint.hotCueNumber = sqlite3_column_int(stmt, 5);
+        cuePoint.color = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 6));
+        cuePoint.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7)));
+        cuePoints.push_back(cuePoint);
+    }
+    
+    sqlite3_finalize(stmt);
+    return cuePoints;
+}
+
+bool DatabaseManager::deleteAllCuePointsForTrack(int64_t trackId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = "DELETE FROM CuePoints WHERE track_id=?";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("deleteAllCuePointsForTrack", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, trackId);
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to delete cue points: ") + sqlite3_errmsg(db);
+        logError("deleteAllCuePointsForTrack", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("All cue points deleted for track: " + juce::String(trackId));
+    return true;
 }
 
 //==============================================================================
@@ -1412,4 +1795,131 @@ void DatabaseManager::logError(const juce::String& context, const juce::String& 
 void DatabaseManager::logInfo(const juce::String& message)
 {
     DBG("[DatabaseManager] " + message);
+}
+
+//==============================================================================
+// Smart Playlist Evaluation
+
+std::vector<DatabaseManager::Track> DatabaseManager::evaluateSmartPlaylist(const VirtualFolder& folder) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    std::vector<Track> tracks;
+    
+    if (!isOpen() || !folder.isSmartPlaylist || folder.smartCriteria.isEmpty())
+        return tracks;
+    
+    // Parse smart criteria
+    // Format: "artist:value;genre:value;bpmMin:120;bpmMax:140"
+    juce::StringArray criteria;
+    criteria.addTokens(folder.smartCriteria, ";", "");
+    
+    // Build parameterized query to prevent SQL injection
+    juce::String whereClause = "WHERE 1=1";
+    std::vector<std::pair<juce::String, juce::String>> stringParams;  // For LIKE queries
+    std::vector<std::pair<juce::String, int>> intParams;  // For numeric comparisons
+    
+    for (const auto& criterion : criteria)
+    {
+        auto parts = juce::StringArray::fromTokens(criterion, ":", "");
+        if (parts.size() != 2)
+            continue;
+        
+        auto key = parts[0].trim();
+        auto value = parts[1].trim();
+        
+        // Escape single quotes in string values to prevent SQL injection
+        auto escapedValue = value.replace("'", "''");
+        
+        if (key == "artist")
+        {
+            whereClause += " AND artist LIKE ?";
+            stringParams.push_back({"artist", "%" + escapedValue + "%"});
+        }
+        else if (key == "album")
+        {
+            whereClause += " AND album LIKE ?";
+            stringParams.push_back({"album", "%" + escapedValue + "%"});
+        }
+        else if (key == "genre")
+        {
+            whereClause += " AND genre LIKE ?";
+            stringParams.push_back({"genre", "%" + escapedValue + "%"});
+        }
+        else if (key == "key")
+        {
+            whereClause += " AND key = ?";
+            stringParams.push_back({"key", escapedValue});
+        }
+        else if (key == "bpmMin")
+        {
+            // Validate numeric value
+            int bpmValue = value.getIntValue();
+            if (bpmValue > 0)
+            {
+                whereClause += " AND bpm >= ?";
+                intParams.push_back({"bpmMin", bpmValue});
+            }
+        }
+        else if (key == "bpmMax")
+        {
+            // Validate numeric value
+            int bpmValue = value.getIntValue();
+            if (bpmValue > 0)
+            {
+                whereClause += " AND bpm <= ?";
+                intParams.push_back({"bpmMax", bpmValue});
+            }
+        }
+    }
+    
+    juce::String sql = R"(
+        SELECT id, file_path, title, artist, album, genre, bpm, key, 
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
+        FROM Tracks )" + whereClause + " ORDER BY title";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql.toRawUTF8(), -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        DBG("[DatabaseManager ERROR] Failed to prepare smart playlist query: " << sqlite3_errmsg(db));
+        return tracks;
+    }
+    
+    // Bind parameters
+    int paramIndex = 1;
+    for (const auto& param : stringParams)
+    {
+        sqlite3_bind_text(stmt, paramIndex++, param.second.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    }
+    for (const auto& param : intParams)
+    {
+        sqlite3_bind_int(stmt, paramIndex++, param.second);
+    }
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        Track track;
+        track.id = sqlite3_column_int64(stmt, 0);
+        track.filePath = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
+        track.title = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
+        track.artist = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        track.album = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 4));
+        track.genre = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
+        track.bpm = sqlite3_column_int(stmt, 6);
+        track.key = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7));
+        track.duration = sqlite3_column_double(stmt, 8);
+        track.fileSize = sqlite3_column_int64(stmt, 9);
+        track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
+        tracks.push_back(track);
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    DBG("[DatabaseManager] Smart playlist '" << folder.name << "' evaluated: " << tracks.size() << " tracks found");
+    return tracks;
 }
