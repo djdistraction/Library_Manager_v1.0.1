@@ -1,0 +1,148 @@
+# Build directories
+build/
+builds/
+Builds/
+cmake-build-*/
+out/
+bin/
+lib/
+
+# IDE and editor files
+.vscode/
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.xcuserdata/
+*.xcworkspace/
+xcuserdata/
+
+# Visual Studio
+*.opensdf
+*.sdf
+*.VC.db
+*.VC.opendb
+ipch/
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+
+# Xcode
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+!default.pbxuser
+!default.mode1v3
+!default.mode2v3
+!default.perspectivev3
+DerivedData/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+*.ko
+*.elf
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Profiling
+*.gcda
+*.gcno
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Package manager directories
+node_modules/
+packages/
+
+# JetBrains IDEs
+.idea/
+*.iml
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+
+# Conan
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+
+# vcpkg
+vcpkg_installed/
+
+# Testing
+Testing/
+CTestTestfile.cmake
+
+# Installation files (keep source pristine)
+install_manifest.txt
