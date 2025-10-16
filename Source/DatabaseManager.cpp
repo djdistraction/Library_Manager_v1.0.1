@@ -111,6 +111,41 @@ bool DatabaseManager::initialize(const juce::File& databaseFile)
                 }
             }
         }
+        
+        // Check if smart playlist columns exist in VirtualFolders and add if not
+        stmt = nullptr;
+        const char* folderPragmaQuery = "PRAGMA table_info(VirtualFolders)";
+        
+        if (sqlite3_prepare_v2(db, folderPragmaQuery, -1, &stmt, nullptr) == SQLITE_OK)
+        {
+            bool hasSmartColumns = false;
+            
+            while (sqlite3_step(stmt) == SQLITE_ROW)
+            {
+                const char* columnName = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+                if (columnName && juce::String(columnName) == "is_smart_playlist")
+                {
+                    hasSmartColumns = true;
+                    break;
+                }
+            }
+            
+            sqlite3_finalize(stmt);
+            
+            if (!hasSmartColumns)
+            {
+                logInfo("Adding smart playlist columns to VirtualFolders table...");
+                if (executeSQL("ALTER TABLE VirtualFolders ADD COLUMN is_smart_playlist INTEGER DEFAULT 0") &&
+                    executeSQL("ALTER TABLE VirtualFolders ADD COLUMN smart_criteria TEXT"))
+                {
+                    logInfo("Successfully added smart playlist columns");
+                }
+                else
+                {
+                    logError("initialize", "Failed to add smart playlist columns");
+                }
+            }
+        }
     }
     
     return true;
@@ -681,8 +716,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
     }
     
     const char* sql = R"(
-        INSERT INTO VirtualFolders (name, description, date_created)
-        VALUES (?, ?, ?)
+        INSERT INTO VirtualFolders (name, description, date_created, is_smart_playlist, smart_criteria)
+        VALUES (?, ?, ?, ?, ?)
     )";
     
     sqlite3_stmt* stmt = nullptr;
@@ -698,6 +733,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
     sqlite3_bind_text(stmt, 1, folder.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 2, folder.description.toRawUTF8(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, timeToString(folder.dateCreated).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, folder.isSmartPlaylist ? 1 : 0);
+    sqlite3_bind_text(stmt, 5, folder.smartCriteria.toRawUTF8(), -1, SQLITE_TRANSIENT);
     
     result = sqlite3_step(stmt);
     
@@ -807,7 +844,7 @@ DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderI
         return folder;
     
     const char* sql = R"(
-        SELECT id, name, description, date_created
+        SELECT id, name, description, date_created, is_smart_playlist, smart_criteria
         FROM VirtualFolders WHERE id=?
     )";
     
@@ -825,6 +862,8 @@ DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderI
         folder.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
         folder.description = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
         folder.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3)));
+        folder.isSmartPlaylist = sqlite3_column_int(stmt, 4) != 0;
+        folder.smartCriteria = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
     }
     
     sqlite3_finalize(stmt);
@@ -841,7 +880,7 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolder
         return folders;
     
     const char* sql = R"(
-        SELECT id, name, description, date_created
+        SELECT id, name, description, date_created, is_smart_playlist, smart_criteria
         FROM VirtualFolders ORDER BY name
     )";
     
@@ -858,6 +897,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolder
         folder.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
         folder.description = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
         folder.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3)));
+        folder.isSmartPlaylist = sqlite3_column_int(stmt, 4) != 0;
+        folder.smartCriteria = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
         folders.push_back(folder);
     }
     
@@ -1754,4 +1795,83 @@ void DatabaseManager::logError(const juce::String& context, const juce::String& 
 void DatabaseManager::logInfo(const juce::String& message)
 {
     DBG("[DatabaseManager] " + message);
+}
+
+//==============================================================================
+// Smart Playlist Evaluation
+
+std::vector<DatabaseManager::Track> DatabaseManager::evaluateSmartPlaylist(const VirtualFolder& folder) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    std::vector<Track> tracks;
+    
+    if (!isOpen() || !folder.isSmartPlaylist || folder.smartCriteria.isEmpty())
+        return tracks;
+    
+    // Parse smart criteria (simplified JSON-like format)
+    // Format: "artist:value;genre:value;bpmMin:120;bpmMax:140"
+    juce::StringArray criteria;
+    criteria.addTokens(folder.smartCriteria, ";", "");
+    
+    juce::String whereClause = "WHERE 1=1";
+    
+    for (const auto& criterion : criteria)
+    {
+        auto parts = juce::StringArray::fromTokens(criterion, ":", "");
+        if (parts.size() != 2)
+            continue;
+        
+        auto key = parts[0].trim();
+        auto value = parts[1].trim();
+        
+        if (key == "artist")
+            whereClause += " AND artist LIKE '%" + value + "%'";
+        else if (key == "album")
+            whereClause += " AND album LIKE '%" + value + "%'";
+        else if (key == "genre")
+            whereClause += " AND genre LIKE '%" + value + "%'";
+        else if (key == "key")
+            whereClause += " AND key = '" + value + "'";
+        else if (key == "bpmMin")
+            whereClause += " AND bpm >= " + value;
+        else if (key == "bpmMax")
+            whereClause += " AND bpm <= " + value;
+    }
+    
+    juce::String sql = R"(
+        SELECT id, file_path, title, artist, album, genre, bpm, key, 
+               duration, file_size, file_hash, acoustid_fingerprint, date_added, last_modified
+        FROM Tracks )" + whereClause + " ORDER BY title";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql.toRawUTF8(), -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return tracks;
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        Track track;
+        track.id = sqlite3_column_int64(stmt, 0);
+        track.filePath = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
+        track.title = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
+        track.artist = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        track.album = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 4));
+        track.genre = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
+        track.bpm = sqlite3_column_int(stmt, 6);
+        track.key = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7));
+        track.duration = sqlite3_column_double(stmt, 8);
+        track.fileSize = sqlite3_column_int64(stmt, 9);
+        track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
+        track.acoustidFingerprint = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11));
+        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 13)));
+        tracks.push_back(track);
+    }
+    
+    sqlite3_finalize(stmt);
+    
+    DBG("[DatabaseManager] Smart playlist '" << folder.name << "' evaluated: " << tracks.size() << " tracks found");
+    return tracks;
 }

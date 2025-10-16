@@ -64,6 +64,8 @@ public:
         juce::String name;
         juce::String description;
         juce::Time dateCreated;
+        bool isSmartPlaylist = false;
+        juce::String smartCriteria;  // JSON string with filter criteria
     };
     
     struct FolderTrackLink
@@ -138,6 +140,12 @@ public:
     bool deleteVirtualFolder(int64_t folderId);
     VirtualFolder getVirtualFolder(int64_t folderId) const;
     std::vector<VirtualFolder> getAllVirtualFolders() const;
+    
+    /**
+     * Evaluate smart playlist criteria and return matching tracks.
+     * Smart criteria format: JSON with filters like {"artist":"...", "genre":"...", "bpmMin":120, "bpmMax":140}
+     */
+    std::vector<Track> evaluateSmartPlaylist(const VirtualFolder& folder) const;
     
     //==============================================================================
     // CRUD operations for Folder_Tracks_Link
