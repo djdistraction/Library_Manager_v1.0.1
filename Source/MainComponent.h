@@ -26,6 +26,10 @@
 #include "DatabaseManager.h"
 #include "FileScanner.h"
 #include "AnalysisWorker.h"
+#include "LibraryTableComponent.h"
+#include "PlaylistTreeComponent.h"
+#include "OnboardingComponent.h"
+#include "RekordboxExporter.h"
 #include <atomic>
 
 //==============================================================================
@@ -47,28 +51,42 @@ public:
 
 private:
     //==============================================================================
+    // UI Components
     juce::Label titleLabel;
     juce::Label statusLabel;
-    juce::Label progressLabel;
+    juce::TextEditor searchBox;
     juce::TextButton scanButton;
-    juce::TextButton stopButton;
-    juce::ProgressBar progressBar;
-    juce::TextEditor logViewer;
+    juce::TextButton exportButton;
+    juce::TextButton newPlaylistButton;
+    juce::Label progressLabel;
     
+    std::unique_ptr<LibraryTableComponent> libraryTable;
+    std::unique_ptr<PlaylistTreeComponent> playlistTree;
+    std::unique_ptr<OnboardingComponent> onboardingComponent;
+    
+    // Backend components
     std::unique_ptr<DatabaseManager> databaseManager;
     std::unique_ptr<FileScanner> fileScanner;
     std::unique_ptr<AnalysisWorker> analysisWorker;
+    std::unique_ptr<RekordboxExporter> rekordboxExporter;
     
+    // State
     double progress = 0.0;
+    juce::ProgressBar progressBar;
     juce::String currentStatus;
     std::atomic<bool> isScanningActive{false};
+    bool showOnboarding = true;
     
+    // Methods
     void initializeDatabase();
+    void checkFirstRun();
     void startScan();
     void stopScan();
+    void exportToRekordbox();
+    void createNewPlaylist();
     void updateProgress();
     void timerCallback() override;
-    void addLogMessage(const juce::String& message);
+    void onSearchTextChanged();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

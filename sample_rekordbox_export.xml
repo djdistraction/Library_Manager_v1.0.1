@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample Rekordbox XML Export from Library Manager v1.0.1 -->
+<!-- This file demonstrates the XML structure exported by the RekordboxExporter -->
+
+<DJ_PLAYLISTS Version="1.0.0">
+  <PRODUCT Name="Library Manager" Version="1.0.1" Company="uniQuE-ui"/>
+  
+  <COLLECTION Entries="3">
+    <!-- Track 1: Full metadata example -->
+    <TRACK TrackID="0" Name="Deep House Groove" Artist="DJ Producer" Album="Summer Vibes 2025" Genre="House" Kind="MP3 File" AverageBpm="124" Tonality="Am" TotalTime="360" Location="file://localhost/path/to/music/deep_house_groove.mp3">
+      <TEMPO Inizio="0.000" Bpm="124.00"/>
+    </TRACK>
+    
+    <!-- Track 2: Minimal metadata example -->
+    <TRACK TrackID="1" Name="Techno Track" Artist="Unknown Artist" Album="" Genre="Techno" Kind="WAV File" AverageBpm="135" Tonality="" TotalTime="420" Location="file://localhost/path/to/music/techno_track.wav">
+      <TEMPO Inizio="0.000" Bpm="135.00"/>
+    </TRACK>
+    
+    <!-- Track 3: Alternative genre -->
+    <TRACK TrackID="2" Name="Ambient Journey" Artist="Soundscape Artist" Album="Atmospheric Sessions" Genre="Ambient" Kind="FLAC File" AverageBpm="0" Tonality="Cm" TotalTime="540" Location="file://localhost/path/to/music/ambient_journey.flac">
+      <TEMPO Inizio="0.000"/>
+    </TRACK>
+  </COLLECTION>
+  
+  <PLAYLISTS>
+    <!-- Root node containing all playlists -->
+    <NODE Type="0" Name="ROOT" Count="2">
+      
+      <!-- Playlist 1: House Mix -->
+      <NODE Type="1" Name="House Mix" KeyType="0" Entries="2">
+        <TRACK Key="0"/>
+        <TRACK Key="2"/>
+      </NODE>
+      
+      <!-- Playlist 2: Techno Selection -->
+      <NODE Type="1" Name="Techno Selection" KeyType="0" Entries="1">
+        <TRACK Key="1"/>
+      </NODE>
+      
+    </NODE>
+  </PLAYLISTS>
+  
+</DJ_PLAYLISTS>
