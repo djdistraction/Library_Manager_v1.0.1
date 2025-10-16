@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation successfully addresses all known limitations and adds several high-value features to the Library Manager v1.0.1 application.
+This implementation successfully addresses all known limitations and adds several high-value features to the uniQuE-ui Library Manager application.
 
 ## Priority: Known Limitations Fixed ✓
 

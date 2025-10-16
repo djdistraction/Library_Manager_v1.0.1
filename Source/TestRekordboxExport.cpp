@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    Library Manager v1.0.1 - Rekordbox Export Test
+    uniQuE-ui Library Manager - Rekordbox Export Test
     Copyright (C) 2025 uniQuE-ui
 
     This test validates the Rekordbox XML export functionality.

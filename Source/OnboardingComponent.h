@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    Library Manager v1.0.1
+    uniQuE-ui Library Manager
     Copyright (C) 2025 uniQuE-ui
 
     This program is free software: you can redistribute it and/or modify
