@@ -20,7 +20,7 @@
   ==============================================================================
 */
 
-#include <JuceHeader.h>
+#include <juce_gui_basics/juce_gui_basics.h>
 #include "MainComponent.h"
 
 //==============================================================================
@@ -30,8 +30,8 @@ public:
     //==============================================================================
     LibraryManagerApplication() {}
 
-    const juce::String getApplicationName() override       { return ProjectInfo::projectName; }
-    const juce::String getApplicationVersion() override    { return ProjectInfo::versionString; }
+    const juce::String getApplicationName() override       { return "Library Manager"; }
+    const juce::String getApplicationVersion() override    { return "1.0.1"; }
     bool moreThanOneInstanceAllowed() override             { return false; }
 
     //==============================================================================

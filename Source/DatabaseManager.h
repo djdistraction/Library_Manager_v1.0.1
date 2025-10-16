@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include <JuceHeader.h>
+#include <juce_core/juce_core.h>
+#include <juce_data_structures/juce_data_structures.h>
 #include <sqlite3.h>
 #include <memory>
 #include <vector>
@@ -52,6 +53,7 @@ public:
         double duration = 0.0;
         int64_t fileSize = 0;
         juce::String fileHash;
+        juce::String acoustidFingerprint;
         juce::Time dateAdded;
         juce::Time lastModified;
     };
@@ -108,6 +110,13 @@ public:
     Track getTrack(int64_t trackId) const;
     std::vector<Track> getAllTracks() const;
     std::vector<Track> searchTracks(const juce::String& searchTerm) const;
+    
+    /**
+     * Find tracks with the same AcoustID fingerprint (potential duplicates).
+     * @param fingerprint The AcoustID fingerprint to search for
+     * @return Vector of tracks with matching fingerprint
+     */
+    std::vector<Track> findTracksByFingerprint(const juce::String& fingerprint) const;
     
     //==============================================================================
     // CRUD operations for VirtualFolders
