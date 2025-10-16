@@ -1,4 +1,4 @@
-# Library_Manager_v1.0.1
+# Library_Manager
 
 The uniQuE-ui Library Manager is a standalone desktop application for Windows and macOS, designed to be the definitive music library management tool for DJs, music enthusiasts, and other entertainment professionals.
 
@@ -60,8 +60,8 @@ sudo apt-get install libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev \
                      libxcomposite-dev libsqlite3-dev
 
 # Clone repository and submodules
-git clone https://github.com/djdistraction/Library_Manager_v1.0.1.git
-cd Library_Manager_v1.0.1
+git clone https://github.com/djdistraction/Library_Manager.git
+cd Library_Manager
 git submodule update --init JUCE
 
 # Build
@@ -76,8 +76,8 @@ make -j$(nproc)
 #### macOS
 ```bash
 # Clone repository and submodules
-git clone https://github.com/djdistraction/Library_Manager_v1.0.1.git
-cd Library_Manager_v1.0.1
+git clone https://github.com/djdistraction/Library_Manager.git
+cd Library_Manager
 git submodule update --init JUCE
 
 # Build
@@ -92,8 +92,8 @@ open "bin/Library Manager.app"
 #### Windows
 ```powershell
 # Clone repository and submodules
-git clone https://github.com/djdistraction/Library_Manager_v1.0.1.git
-cd Library_Manager_v1.0.1
+git clone https://github.com/djdistraction/Library_Manager.git
+cd Library_Manager
 git submodule update --init JUCE
 
 # Build
@@ -141,7 +141,7 @@ cmake --build . --config Release
 ## File Structure
 
 ```
-Library_Manager_v1.0.1/
+Library_Manager/
 ├── Source/
 │   ├── Main.cpp                    # Application entry point
 │   ├── MainComponent.*             # Main UI component
