@@ -13,7 +13,9 @@ This project is a Java-based library management system. It is built using Apache
 Please adhere to the standard Maven project structure:
 
 - `src/main/java`: Main application source code.
+- `src/main/resources`: Main application resources (e.g., configuration files, property files).
 - `src/test/java`: Test source code.
+- `src/test/resources`: Test resources (e.g., test data, configuration files).
 - `pom.xml`: Maven project configuration.
 
 ## Coding Standards
