@@ -24,13 +24,16 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "DatabaseManager.h"
+#include "FileScanner.h"
+#include "AnalysisWorker.h"
 
 //==============================================================================
 /*
     This component serves as the main content component for the Library Manager application.
     It will be the container for the music library interface and all related UI components.
 */
-class MainComponent  : public juce::Component
+class MainComponent  : public juce::Component,
+                       private juce::Timer
 {
 public:
     //==============================================================================
@@ -45,10 +48,25 @@ private:
     //==============================================================================
     juce::Label titleLabel;
     juce::Label statusLabel;
+    juce::Label progressLabel;
+    juce::TextButton scanButton;
+    juce::TextButton stopButton;
+    juce::ProgressBar progressBar;
+    juce::TextEditor logViewer;
     
     std::unique_ptr<DatabaseManager> databaseManager;
+    std::unique_ptr<FileScanner> fileScanner;
+    std::unique_ptr<AnalysisWorker> analysisWorker;
+    
+    double progress = 0.0;
+    juce::String currentStatus;
     
     void initializeDatabase();
+    void startScan();
+    void stopScan();
+    void updateProgress();
+    void timerCallback() override;
+    void addLogMessage(const juce::String& message);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
