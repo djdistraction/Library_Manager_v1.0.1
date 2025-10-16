@@ -87,6 +87,18 @@ public:
         juce::String errorMessage;
         int progress = 0;
     };
+    
+    struct CuePoint
+    {
+        int64_t id = 0;
+        int64_t trackId = 0;
+        double position = 0.0;  // Position in seconds
+        juce::String name;
+        int type = 0;  // 0=Memory Cue, 1=Hot Cue, 2=Loop In, 3=Loop Out
+        int hotCueNumber = -1;  // Hot cue number (0-7), -1 for non-hot cues
+        juce::String color;  // Hex color code
+        juce::Time dateCreated;
+    };
 
     //==============================================================================
     DatabaseManager();
@@ -146,6 +158,16 @@ public:
     Job getJob(int64_t jobId) const;
     std::vector<Job> getAllJobs() const;
     std::vector<Job> getJobsByStatus(const juce::String& status) const;
+    
+    //==============================================================================
+    // CRUD operations for CuePoints
+    
+    bool addCuePoint(const CuePoint& cuePoint, int64_t& outId);
+    bool updateCuePoint(const CuePoint& cuePoint);
+    bool deleteCuePoint(int64_t cuePointId);
+    CuePoint getCuePoint(int64_t cuePointId) const;
+    std::vector<CuePoint> getCuePointsForTrack(int64_t trackId) const;
+    bool deleteAllCuePointsForTrack(int64_t trackId);
     
     //==============================================================================
     // Transaction support

@@ -227,12 +227,45 @@ juce::XmlElement* RekordboxExporter::createTrackElement(const DatabaseManager::T
     // File location
     trackElement->setAttribute("Location", generateTrackLocation(track.filePath));
     
-    // Basic cue point support - add a memory cue at the start
-    auto* tempoElement = new juce::XmlElement("TEMPO");
-    tempoElement->setAttribute("Inizio", "0.000");
-    if (track.bpm > 0)
-        tempoElement->setAttribute("Bpm", juce::String(static_cast<double>(track.bpm), 2));
-    trackElement->addChildElement(tempoElement);
+    // Advanced cue point support - export all cue points from database
+    auto cuePoints = databaseManager.getCuePointsForTrack(track.id);
+    
+    if (cuePoints.empty())
+    {
+        // If no cue points, add a basic tempo marker at the start
+        auto* tempoElement = new juce::XmlElement("TEMPO");
+        tempoElement->setAttribute("Inizio", "0.000");
+        if (track.bpm > 0)
+            tempoElement->setAttribute("Bpm", juce::String(static_cast<double>(track.bpm), 2));
+        trackElement->addChildElement(tempoElement);
+    }
+    else
+    {
+        // Export all cue points
+        for (const auto& cue : cuePoints)
+        {
+            if (cue.type == 0 || cue.type == 1)  // Memory cue or Hot cue
+            {
+                auto* cueElement = new juce::XmlElement("POSITION_MARK");
+                cueElement->setAttribute("Name", cue.name.isEmpty() ? "CUE" : cue.name);
+                cueElement->setAttribute("Type", cue.type);  // 0=Memory, 1=Hot Cue
+                cueElement->setAttribute("Start", juce::String(cue.position, 3));
+                cueElement->setAttribute("Num", cue.hotCueNumber);
+                if (cue.color.isNotEmpty())
+                    cueElement->setAttribute("Red", cue.color);
+                trackElement->addChildElement(cueElement);
+            }
+        }
+        
+        // Add tempo marker if BPM is available
+        if (track.bpm > 0)
+        {
+            auto* tempoElement = new juce::XmlElement("TEMPO");
+            tempoElement->setAttribute("Inizio", "0.000");
+            tempoElement->setAttribute("Bpm", juce::String(static_cast<double>(track.bpm), 2));
+            trackElement->addChildElement(tempoElement);
+        }
+    }
     
     return trackElement;
 }

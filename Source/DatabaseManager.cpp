@@ -221,6 +221,26 @@ bool DatabaseManager::createTables()
     executeSQL("CREATE INDEX IF NOT EXISTS idx_jobs_status ON Jobs(status)");
     executeSQL("CREATE INDEX IF NOT EXISTS idx_jobs_type ON Jobs(job_type)");
     
+    // Create CuePoints table
+    const char* createCuePointsTable = R"(
+        CREATE TABLE IF NOT EXISTS CuePoints (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            track_id INTEGER NOT NULL,
+            position REAL NOT NULL,
+            name TEXT,
+            type INTEGER DEFAULT 0,
+            hot_cue_number INTEGER DEFAULT -1,
+            color TEXT,
+            date_created TEXT NOT NULL,
+            FOREIGN KEY (track_id) REFERENCES Tracks(id) ON DELETE CASCADE
+        )
+    )";
+    
+    if (!executeSQL(createCuePointsTable))
+        return false;
+    
+    executeSQL("CREATE INDEX IF NOT EXISTS idx_cuepoints_track ON CuePoints(track_id)");
+    
     return true;
 }
 
@@ -1444,6 +1464,261 @@ bool DatabaseManager::rollbackTransaction()
     const juce::ScopedLock lock(dbMutex);
     
     return executeSQL("ROLLBACK");
+}
+
+//==============================================================================
+// CRUD operations for CuePoints
+
+bool DatabaseManager::addCuePoint(const CuePoint& cuePoint, int64_t& outId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = R"(
+        INSERT INTO CuePoints (track_id, position, name, type, hot_cue_number, color, date_created)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("addCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePoint.trackId);
+    sqlite3_bind_double(stmt, 2, cuePoint.position);
+    sqlite3_bind_text(stmt, 3, cuePoint.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, cuePoint.type);
+    sqlite3_bind_int(stmt, 5, cuePoint.hotCueNumber);
+    sqlite3_bind_text(stmt, 6, cuePoint.color.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, timeToString(cuePoint.dateCreated).toRawUTF8(), -1, SQLITE_TRANSIENT);
+    
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to insert cue point: ") + sqlite3_errmsg(db);
+        logError("addCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    outId = sqlite3_last_insert_rowid(db);
+    sqlite3_finalize(stmt);
+    
+    logInfo("Cue point added with ID: " + juce::String(outId));
+    return true;
+}
+
+bool DatabaseManager::updateCuePoint(const CuePoint& cuePoint)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = R"(
+        UPDATE CuePoints SET track_id=?, position=?, name=?, type=?, hot_cue_number=?, color=?
+        WHERE id=?
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("updateCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePoint.trackId);
+    sqlite3_bind_double(stmt, 2, cuePoint.position);
+    sqlite3_bind_text(stmt, 3, cuePoint.name.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int(stmt, 4, cuePoint.type);
+    sqlite3_bind_int(stmt, 5, cuePoint.hotCueNumber);
+    sqlite3_bind_text(stmt, 6, cuePoint.color.toRawUTF8(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 7, cuePoint.id);
+    
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to update cue point: ") + sqlite3_errmsg(db);
+        logError("updateCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("Cue point updated: " + juce::String(cuePoint.id));
+    return true;
+}
+
+bool DatabaseManager::deleteCuePoint(int64_t cuePointId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = "DELETE FROM CuePoints WHERE id=?";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("deleteCuePoint", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, cuePointId);
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to delete cue point: ") + sqlite3_errmsg(db);
+        logError("deleteCuePoint", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("Cue point deleted: " + juce::String(cuePointId));
+    return true;
+}
+
+DatabaseManager::CuePoint DatabaseManager::getCuePoint(int64_t cuePointId) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    CuePoint cuePoint;
+    
+    if (!isOpen())
+        return cuePoint;
+    
+    const char* sql = R"(
+        SELECT id, track_id, position, name, type, hot_cue_number, color, date_created
+        FROM CuePoints WHERE id=?
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return cuePoint;
+    
+    sqlite3_bind_int64(stmt, 1, cuePointId);
+    
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        cuePoint.id = sqlite3_column_int64(stmt, 0);
+        cuePoint.trackId = sqlite3_column_int64(stmt, 1);
+        cuePoint.position = sqlite3_column_double(stmt, 2);
+        cuePoint.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        cuePoint.type = sqlite3_column_int(stmt, 4);
+        cuePoint.hotCueNumber = sqlite3_column_int(stmt, 5);
+        cuePoint.color = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 6));
+        cuePoint.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7)));
+    }
+    
+    sqlite3_finalize(stmt);
+    return cuePoint;
+}
+
+std::vector<DatabaseManager::CuePoint> DatabaseManager::getCuePointsForTrack(int64_t trackId) const
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    std::vector<CuePoint> cuePoints;
+    
+    if (!isOpen())
+        return cuePoints;
+    
+    const char* sql = R"(
+        SELECT id, track_id, position, name, type, hot_cue_number, color, date_created
+        FROM CuePoints WHERE track_id=? ORDER BY position
+    )";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+        return cuePoints;
+    
+    sqlite3_bind_int64(stmt, 1, trackId);
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        CuePoint cuePoint;
+        cuePoint.id = sqlite3_column_int64(stmt, 0);
+        cuePoint.trackId = sqlite3_column_int64(stmt, 1);
+        cuePoint.position = sqlite3_column_double(stmt, 2);
+        cuePoint.name = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
+        cuePoint.type = sqlite3_column_int(stmt, 4);
+        cuePoint.hotCueNumber = sqlite3_column_int(stmt, 5);
+        cuePoint.color = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 6));
+        cuePoint.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7)));
+        cuePoints.push_back(cuePoint);
+    }
+    
+    sqlite3_finalize(stmt);
+    return cuePoints;
+}
+
+bool DatabaseManager::deleteAllCuePointsForTrack(int64_t trackId)
+{
+    const juce::ScopedLock lock(dbMutex);
+    
+    if (!isOpen())
+    {
+        lastError = "Database is not open";
+        return false;
+    }
+    
+    const char* sql = "DELETE FROM CuePoints WHERE track_id=?";
+    
+    sqlite3_stmt* stmt = nullptr;
+    int result = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    
+    if (result != SQLITE_OK)
+    {
+        lastError = juce::String("Failed to prepare statement: ") + sqlite3_errmsg(db);
+        logError("deleteAllCuePointsForTrack", lastError);
+        return false;
+    }
+    
+    sqlite3_bind_int64(stmt, 1, trackId);
+    result = sqlite3_step(stmt);
+    
+    if (result != SQLITE_DONE)
+    {
+        lastError = juce::String("Failed to delete cue points: ") + sqlite3_errmsg(db);
+        logError("deleteAllCuePointsForTrack", lastError);
+        sqlite3_finalize(stmt);
+        return false;
+    }
+    
+    sqlite3_finalize(stmt);
+    logInfo("All cue points deleted for track: " + juce::String(trackId));
+    return true;
 }
 
 //==============================================================================
