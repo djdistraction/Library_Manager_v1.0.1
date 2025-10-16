@@ -28,7 +28,7 @@ Please adhere to the standard Maven project structure:
 
 ### Naming Conventions
 
-- **Classes & Interfaces:** PascalCase (e.g., `BookService`, `IMemberRepository`)
+- **Classes & Interfaces:** PascalCase (e.g., `BookService`, `MemberRepository`)
 - **Methods & Variables:** camelCase (e.g., `addBook`, `bookTitle`)
 - **Constants:** UPPER_CASE_SNAKE_CASE (e.g., `MAX_BOOKS_PER_MEMBER`)
 
