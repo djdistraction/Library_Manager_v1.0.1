@@ -33,6 +33,9 @@ LibraryTableComponent::LibraryTableComponent(DatabaseManager& dbManager)
     table.setOutlineThickness(1);
     table.setMultipleSelectionEnabled(true);
     
+    // Enable drag and drop
+    table.getVerticalScrollBar().setAutoHide(false);
+    
     // Add columns
     table.getHeader().addColumn("Title", ColumnIds::Title, 200, 50, 400, juce::TableHeaderComponent::defaultFlags);
     table.getHeader().addColumn("Artist", ColumnIds::Artist, 150, 50, 300, juce::TableHeaderComponent::defaultFlags);
@@ -154,4 +157,22 @@ void LibraryTableComponent::loadTracks()
     {
         tracks = databaseManager.searchTracks(currentSearchFilter);
     }
+}
+
+juce::var LibraryTableComponent::getDragSourceDescription(const juce::SparseSet<int>& selectedRows)
+{
+    // Create an array of track IDs for the selected rows
+    juce::Array<juce::var> trackIds;
+    
+    for (int i = 0; i < selectedRows.size(); ++i)
+    {
+        int rowNumber = selectedRows[i];
+        if (rowNumber >= 0 && rowNumber < static_cast<int>(tracks.size()))
+        {
+            trackIds.add(static_cast<juce::int64>(tracks[rowNumber].id));
+        }
+    }
+    
+    // Return the array as a variant
+    return juce::var(trackIds);
 }

@@ -67,6 +67,10 @@ public:
     void paintItem(juce::Graphics& g, int width, int height) override;
     void itemClicked(const juce::MouseEvent& e) override;
     
+    // Drag and drop support
+    bool isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) override;
+    void itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails, int insertIndex) override;
+    
     const DatabaseManager::VirtualFolder& getFolder() const { return virtualFolder; }
 
 private:
