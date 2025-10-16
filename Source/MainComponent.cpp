@@ -24,60 +24,64 @@
 
 //==============================================================================
 MainComponent::MainComponent()
-    : progress(0.0),  // Initialize progress before progressBar
-      progressBar(progress)  // Initialize progress bar with progress variable
+    : progress(0.0),
+      progressBar(progress)
 {
     // Set the main component size
-    setSize (1200, 800);
+    setSize (1400, 900);
 
     // Setup title label
     titleLabel.setText ("Library Manager v1.0.1", juce::dontSendNotification);
-    titleLabel.setFont (juce::Font (32.0f, juce::Font::bold));
-    titleLabel.setJustificationType (juce::Justification::centred);
+    titleLabel.setFont (juce::Font (28.0f, juce::Font::bold));
+    titleLabel.setJustificationType (juce::Justification::centredLeft);
     titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);
     addAndMakeVisible (titleLabel);
     
-    // Setup status label
+    // Setup status label (bottom status bar)
     statusLabel.setText ("Initializing...", juce::dontSendNotification);
-    statusLabel.setFont (juce::Font (14.0f));
-    statusLabel.setJustificationType (juce::Justification::centred);
+    statusLabel.setFont (juce::Font (12.0f));
+    statusLabel.setJustificationType (juce::Justification::centredLeft);
     statusLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (statusLabel);
     
     // Setup progress label
     progressLabel.setText ("Ready", juce::dontSendNotification);
-    progressLabel.setFont (juce::Font (12.0f));
-    progressLabel.setJustificationType (juce::Justification::centred);
+    progressLabel.setFont (juce::Font (11.0f));
+    progressLabel.setJustificationType (juce::Justification::centredRight);
     progressLabel.setColour (juce::Label::textColourId, juce::Colours::lightgrey);
     addAndMakeVisible (progressLabel);
     
-    // Setup scan button
+    // Setup search box
+    searchBox.setMultiLine (false);
+    searchBox.setReturnKeyStartsNewLine (false);
+    searchBox.setTextToShowWhenEmpty ("Search library...", juce::Colours::grey);
+    searchBox.onTextChange = [this] { onSearchTextChanged(); };
+    addAndMakeVisible (searchBox);
+    
+    // Setup buttons
     scanButton.setButtonText ("Scan Library");
     scanButton.onClick = [this] { startScan(); };
     addAndMakeVisible (scanButton);
     
-    // Setup stop button
-    stopButton.setButtonText ("Stop");
-    stopButton.onClick = [this] { stopScan(); };
-    stopButton.setEnabled (false);
-    addAndMakeVisible (stopButton);
+    exportButton.setButtonText ("Export to Rekordbox");
+    exportButton.onClick = [this] { exportToRekordbox(); };
+    addAndMakeVisible (exportButton);
+    
+    newPlaylistButton.setButtonText ("New Playlist");
+    newPlaylistButton.onClick = [this] { createNewPlaylist(); };
+    addAndMakeVisible (newPlaylistButton);
     
     // Setup progress bar
     addAndMakeVisible (progressBar);
     
-    // Setup log viewer
-    logViewer.setMultiLine (true);
-    logViewer.setReadOnly (true);
-    logViewer.setScrollbarsShown (true);
-    logViewer.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff2d2d2d));
-    logViewer.setColour (juce::TextEditor::textColourId, juce::Colours::lightgrey);
-    addAndMakeVisible (logViewer);
-    
     // Initialize database
     initializeDatabase();
     
-    // Start timer for UI updates (500ms is sufficient for status updates)
-    startTimer (500);  // Update every 500ms
+    // Check if this is first run
+    checkFirstRun();
+    
+    // Start timer for UI updates
+    startTimer (500);
 }
 
 MainComponent::~MainComponent()
@@ -85,6 +89,11 @@ MainComponent::~MainComponent()
     stopTimer();
     if (analysisWorker)
         analysisWorker->stopWorker();
+    
+    // Clean up UI components
+    libraryTable.reset();
+    playlistTree.reset();
+    onboardingComponent.reset();
 }
 
 void MainComponent::initializeDatabase()
@@ -104,18 +113,17 @@ void MainComponent::initializeDatabase()
     auto dbFile = appDataDir.getChildFile("library.db");
     
     DBG("Database file path: " + dbFile.getFullPathName());
-    addLogMessage("Database file: " + dbFile.getFullPathName());
     
     if (databaseManager->initialize(dbFile))
     {
-        statusLabel.setText("Database initialized successfully", juce::dontSendNotification);
+        statusLabel.setText("Database initialized", juce::dontSendNotification);
         statusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
-        addLogMessage("Database initialized successfully");
         DBG("Database initialized successfully");
         
         // Initialize file scanner and analysis worker
         fileScanner = std::make_unique<FileScanner>(*databaseManager);
         analysisWorker = std::make_unique<AnalysisWorker>(*databaseManager);
+        rekordboxExporter = std::make_unique<RekordboxExporter>(*databaseManager);
         
         // Set up worker progress callback
         analysisWorker->setProgressCallback([this](const AnalysisWorker::ProgressInfo& info) {
@@ -123,33 +131,76 @@ void MainComponent::initializeDatabase()
                 juce::String msg = "Processing: " + info.filePath.fromLastOccurrenceOf("/", false, false);
                 if (!info.errorMessage.isEmpty())
                     msg += " (Error: " + info.errorMessage + ")";
-                addLogMessage(msg);
+                DBG(msg);
             });
         });
         
         // Start the analysis worker
         analysisWorker->startWorker();
-        addLogMessage("Analysis worker started");
     }
     else
     {
-        statusLabel.setText("Database initialization failed: " + databaseManager->getLastError(), 
-                          juce::dontSendNotification);
+        statusLabel.setText("Database initialization failed", juce::dontSendNotification);
         statusLabel.setColour(juce::Label::textColourId, juce::Colours::red);
-        addLogMessage("ERROR: Database initialization failed: " + databaseManager->getLastError());
         DBG("Database initialization failed: " + databaseManager->getLastError());
+    }
+}
+
+void MainComponent::checkFirstRun()
+{
+    // Check if this is first run (no tracks in database)
+    if (databaseManager && databaseManager->isOpen())
+    {
+        auto tracks = databaseManager->getAllTracks();
+        if (tracks.empty())
+        {
+            // Show onboarding
+            showOnboarding = true;
+            onboardingComponent = std::make_unique<OnboardingComponent>(*databaseManager);
+            addAndMakeVisible(*onboardingComponent);
+            resized();
+        }
+        else
+        {
+            // Show main interface
+            showOnboarding = false;
+            libraryTable = std::make_unique<LibraryTableComponent>(*databaseManager);
+            playlistTree = std::make_unique<PlaylistTreeComponent>(*databaseManager);
+            addAndMakeVisible(*libraryTable);
+            addAndMakeVisible(*playlistTree);
+            resized();
+        }
     }
 }
 
 void MainComponent::startScan()
 {
-    // Use a simple FileChooser without shared_ptr
+    // Check if onboarding is complete
+    if (onboardingComponent && !onboardingComponent->isComplete())
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                               "Complete Onboarding",
+                                               "Please complete the onboarding process first.");
+        return;
+    }
+    
+    // If onboarding just completed, switch to main interface
+    if (onboardingComponent && onboardingComponent->isComplete() && showOnboarding)
+    {
+        showOnboarding = false;
+        onboardingComponent.reset();
+        libraryTable = std::make_unique<LibraryTableComponent>(*databaseManager);
+        playlistTree = std::make_unique<PlaylistTreeComponent>(*databaseManager);
+        addAndMakeVisible(*libraryTable);
+        addAndMakeVisible(*playlistTree);
+        resized();
+    }
+    
     auto* chooser = new juce::FileChooser("Select music library folder");
     
     chooser->launchAsync(juce::FileBrowserComponent::openMode | 
                          juce::FileBrowserComponent::canSelectDirectories,
                          [this, chooser](const juce::FileChooser& fc) {
-        // Capture chooser to ensure it's deleted after use
         std::unique_ptr<juce::FileChooser> deleter(const_cast<juce::FileChooser*>(chooser));
         
         auto results = fc.getResults();
@@ -157,16 +208,12 @@ void MainComponent::startScan()
             return;
         
         auto directory = results.getFirst();
-        addLogMessage("Starting scan of: " + directory.getFullPathName());
+        DBG("Starting scan of: " + directory.getFullPathName());
         
         scanButton.setEnabled(false);
-        stopButton.setEnabled(true);
         progress = 0.0;
-        
-        // Store scanning state flag
         isScanningActive = true;
         
-        // Run scan in background thread with proper lifetime management
         juce::Thread::launch([this, directory]() {
             if (!isScanningActive)
                 return;
@@ -189,11 +236,14 @@ void MainComponent::startScan()
             juce::MessageManager::callAsync([this, filesFound]() {
                 if (!isScanningActive)
                     return;
-                addLogMessage("Scan complete: " + juce::String(filesFound) + " files queued for analysis");
+                DBG("Scan complete: " + juce::String(filesFound) + " files queued");
                 scanButton.setEnabled(true);
-                stopButton.setEnabled(false);
                 progress = 0.0;
                 isScanningActive = false;
+                
+                // Refresh library table
+                if (libraryTable)
+                    libraryTable->refreshTableContent();
             });
         });
     });
@@ -205,10 +255,117 @@ void MainComponent::stopScan()
     if (fileScanner)
     {
         fileScanner->cancelScan();
-        addLogMessage("Scan cancelled");
+        DBG("Scan cancelled");
     }
     scanButton.setEnabled(true);
-    stopButton.setEnabled(false);
+}
+
+void MainComponent::exportToRekordbox()
+{
+    if (!databaseManager || !databaseManager->isOpen())
+    {
+        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                               "Export Failed",
+                                               "Database is not available.");
+        return;
+    }
+    
+    auto* chooser = new juce::FileChooser("Export Rekordbox XML",
+                                          juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),
+                                          "*.xml");
+    
+    chooser->launchAsync(juce::FileBrowserComponent::saveMode,
+                         [this, chooser](const juce::FileChooser& fc) {
+        std::unique_ptr<juce::FileChooser> deleter(const_cast<juce::FileChooser*>(chooser));
+        
+        auto result = fc.getResult();
+        if (!result.existsAsFile() && result.getParentDirectory().exists())
+        {
+            // Ensure .xml extension
+            if (!result.hasFileExtension(".xml"))
+                result = result.withFileExtension(".xml");
+            
+            exportButton.setEnabled(false);
+            statusLabel.setText("Exporting to Rekordbox...", juce::dontSendNotification);
+            
+            // Set up progress callback
+            rekordboxExporter->setProgressCallback([this](double prog, const juce::String& status) {
+                juce::MessageManager::callAsync([this, prog, status]() {
+                    progress = prog;
+                    statusLabel.setText(status, juce::dontSendNotification);
+                });
+            });
+            
+            // Export in background thread
+            juce::Thread::launch([this, result]() {
+                bool success = rekordboxExporter->exportToXML(result);
+                
+                juce::MessageManager::callAsync([this, success, result]() {
+                    exportButton.setEnabled(true);
+                    progress = 0.0;
+                    
+                    if (success)
+                    {
+                        statusLabel.setText("Export complete!", juce::dontSendNotification);
+                        statusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
+                        
+                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
+                                                               "Export Complete",
+                                                               "Successfully exported to:\n" + result.getFullPathName());
+                    }
+                    else
+                    {
+                        statusLabel.setText("Export failed", juce::dontSendNotification);
+                        statusLabel.setColour(juce::Label::textColourId, juce::Colours::red);
+                        
+                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                               "Export Failed",
+                                                               "Error: " + rekordboxExporter->getLastError());
+                    }
+                });
+            });
+        }
+    });
+}
+
+void MainComponent::createNewPlaylist()
+{
+    // Use async message box instead of modal loop
+    juce::AlertWindow::showAsync(
+        juce::MessageBoxOptions()
+            .withTitle("Create Playlist")
+            .withMessage("Enter playlist name:")
+            .withButton("Create")
+            .withButton("Cancel")
+            .withAssociatedComponent(this),
+        [this](int result) {
+            if (result == 1)
+            {
+                // In real implementation, we'd need a custom dialog with text input
+                // For now, use a simplified approach
+                DBG("Create playlist button clicked");
+                
+                // Create a default playlist for demonstration
+                DatabaseManager::VirtualFolder playlist;
+                playlist.name = "New Playlist " + juce::String(juce::Time::getCurrentTime().toMilliseconds());
+                playlist.description = "";
+                playlist.dateCreated = juce::Time::getCurrentTime();
+                
+                int64_t playlistId;
+                if (databaseManager->addVirtualFolder(playlist, playlistId))
+                {
+                    DBG("Created playlist: " + playlist.name);
+                    if (playlistTree)
+                        playlistTree->refreshTree();
+                }
+                else
+                {
+                    juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
+                                                           "Error",
+                                                           "Failed to create playlist");
+                }
+            }
+        });
 }
 
 void MainComponent::updateProgress()
@@ -234,13 +391,26 @@ void MainComponent::updateProgress()
 void MainComponent::timerCallback()
 {
     updateProgress();
+    
+    // Check if onboarding is complete and switch to main interface
+    if (onboardingComponent && onboardingComponent->isComplete() && showOnboarding)
+    {
+        showOnboarding = false;
+        onboardingComponent.reset();
+        libraryTable = std::make_unique<LibraryTableComponent>(*databaseManager);
+        playlistTree = std::make_unique<PlaylistTreeComponent>(*databaseManager);
+        addAndMakeVisible(*libraryTable);
+        addAndMakeVisible(*playlistTree);
+        resized();
+    }
 }
 
-void MainComponent::addLogMessage(const juce::String& message)
+void MainComponent::onSearchTextChanged()
 {
-    logViewer.moveCaretToEnd();
-    logViewer.insertTextAtCaret(juce::Time::getCurrentTime().toString(true, true) + " - " + message + "\n");
-    logViewer.moveCaretToEnd();
+    if (libraryTable)
+    {
+        libraryTable->setSearchFilter(searchBox.getText());
+    }
 }
 
 //==============================================================================
@@ -251,9 +421,9 @@ void MainComponent::paint (juce::Graphics& g)
     
     // Draw a simple gradient background
     juce::ColourGradient gradient (juce::Colour (0xff2d2d2d), 
-                                   getWidth() / 2.0f, 0.0f,
+                                   static_cast<float>(getWidth()) / 2.0f, 0.0f,
                                    juce::Colour (0xff1a1a1a), 
-                                   getWidth() / 2.0f, getHeight(),
+                                   static_cast<float>(getWidth()) / 2.0f, static_cast<float>(getHeight()),
                                    false);
     g.setGradientFill (gradient);
     g.fillRect (getLocalBounds());
@@ -263,30 +433,53 @@ void MainComponent::resized()
 {
     auto bounds = getLocalBounds();
     
-    // Layout the title label at the top center
-    titleLabel.setBounds (bounds.removeFromTop(60).reduced(10));
-    
-    // Layout the status label
-    statusLabel.setBounds (bounds.removeFromTop(30).reduced(10));
-    
-    bounds.removeFromTop(10);  // Spacing
-    
-    // Button area
-    auto buttonArea = bounds.removeFromTop(40).reduced(10);
-    scanButton.setBounds (buttonArea.removeFromLeft(150));
-    buttonArea.removeFromLeft(10);  // Spacing
-    stopButton.setBounds (buttonArea.removeFromLeft(100));
-    
-    bounds.removeFromTop(10);  // Spacing
-    
-    // Progress label
-    progressLabel.setBounds (bounds.removeFromTop(25).reduced(10));
-    
-    // Progress bar
-    progressBar.setBounds (bounds.removeFromTop(25).reduced(10));
-    
-    bounds.removeFromTop(10);  // Spacing
-    
-    // Log viewer takes remaining space
-    logViewer.setBounds (bounds.reduced(10));
+    if (showOnboarding && onboardingComponent)
+    {
+        // Onboarding mode - center the onboarding component
+        auto onboardingBounds = bounds.reduced(50);
+        onboardingComponent->setBounds(onboardingBounds);
+    }
+    else
+    {
+        // Main interface mode
+        // Top bar with title and controls
+        auto topBar = bounds.removeFromTop(50);
+        titleLabel.setBounds(topBar.removeFromLeft(250).reduced(10, 10));
+        
+        // Buttons on the right
+        auto buttonArea = topBar.removeFromRight(500).reduced(5);
+        newPlaylistButton.setBounds(buttonArea.removeFromRight(120));
+        buttonArea.removeFromRight(5);
+        exportButton.setBounds(buttonArea.removeFromRight(160));
+        buttonArea.removeFromRight(5);
+        scanButton.setBounds(buttonArea.removeFromRight(120));
+        
+        // Search box
+        searchBox.setBounds(topBar.reduced(5));
+        
+        // Status bar at bottom
+        auto statusBar = bounds.removeFromBottom(25);
+        statusLabel.setBounds(statusBar.removeFromLeft(getWidth() * 2 / 3).reduced(5, 2));
+        progressLabel.setBounds(statusBar.reduced(5, 2));
+        
+        // Progress bar above status bar
+        progressBar.setBounds(bounds.removeFromBottom(4));
+        
+        // Main content area
+        auto contentArea = bounds.reduced(5);
+        
+        // Left side: playlist tree (30% width)
+        if (playlistTree)
+        {
+            auto leftPanel = contentArea.removeFromLeft(getWidth() * 30 / 100);
+            playlistTree->setBounds(leftPanel);
+            contentArea.removeFromLeft(5); // Spacing
+        }
+        
+        // Right side: library table (remaining width)
+        if (libraryTable)
+        {
+            libraryTable->setBounds(contentArea);
+        }
+    }
 }

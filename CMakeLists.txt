@@ -63,7 +63,15 @@ target_sources(LibraryManager
         Source/AnalysisWorker.cpp
         Source/AnalysisWorker.h
         Source/AcoustIDFingerprinter.cpp
-        Source/AcoustIDFingerprinter.h)
+        Source/AcoustIDFingerprinter.h
+        Source/LibraryTableComponent.cpp
+        Source/LibraryTableComponent.h
+        Source/PlaylistTreeComponent.cpp
+        Source/PlaylistTreeComponent.h
+        Source/OnboardingComponent.cpp
+        Source/OnboardingComponent.h
+        Source/RekordboxExporter.cpp
+        Source/RekordboxExporter.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
