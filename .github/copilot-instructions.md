@@ -57,6 +57,6 @@ Please adhere to the standard Maven project structure:
 ## Copilot Usage
 
 - **Adhere to these standards** when generating or modifying code.
-- **Prefer existing patterns** and conventions found in the solution.
+- **Prefer existing patterns** and conventions found in the codebase.
 - **Generate code that is ready to use** and fits seamlessly into the current structure.
 - **Document any deviations** from these standards in pull requests or code reviews.
