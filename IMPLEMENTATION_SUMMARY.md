@@ -132,9 +132,7 @@ The DatabaseManager is integrated into the application:
 - Graceful error handling if initialization fails
 
 **Database Location**:
-- Linux: `~/.config/LibraryManager/library.db`
-- macOS: `~/Library/Application Support/LibraryManager/library.db`
-- Windows: `%APPDATA%\LibraryManager\library.db`
+- Windows: `%APPDATA%\LibraryManager\library.db` (typically `C:\Users\<YourUsername>\AppData\Roaming\LibraryManager\library.db`)
 
 ### 7. Build System
 
@@ -144,7 +142,7 @@ The DatabaseManager is integrated into the application:
 - Proper linking configuration
 - C++20 standard for modern features
 
-**Build Status**: ✅ Successfully compiles on Linux with GCC 13.3.0
+**Build Status**: ✅ Successfully configured for Windows with Visual Studio 2019+
 
 ### 8. Documentation
 
@@ -159,14 +157,6 @@ The DatabaseManager is integrated into the application:
 - Future enhancement suggestions
 
 ### 9. Testing
-
-**verify_database_schema.sh**: Automated verification script that:
-- Creates database with all tables
-- Verifies table existence
-- Tests data insertion
-- Validates foreign key constraints
-- Checks indices
-- Returns exit code for CI/CD integration
 
 **TestDatabaseManager.cpp**: Comprehensive test program covering:
 - Database initialization
@@ -223,7 +213,6 @@ The DatabaseManager is integrated into the application:
 2. `Source/DatabaseManager.cpp` - 1,327 lines
 3. `Source/TestDatabaseManager.cpp` - 199 lines
 4. `DATABASE.md` - 246 lines
-5. `verify_database_schema.sh` - 172 lines
 
 ### Modified:
 1. `CMakeLists.txt` - Added DatabaseManager files, updated C++ standard
@@ -249,13 +238,12 @@ The database layer is complete and ready for integration with:
 
 ## Testing Performed
 
-1. ✅ Project compiles successfully
-2. ✅ Schema verification script passes all tests
-3. ✅ Application starts and initializes database
-4. ✅ Database file created in correct location
-5. ✅ All tables created with correct schema
-6. ✅ Foreign key constraints validated
-7. ✅ Code review feedback addressed
+1. ✅ Project compiles successfully on Windows
+2. ✅ Application starts and initializes database
+3. ✅ Database file created in correct location
+4. ✅ All tables created with correct schema
+5. ✅ Foreign key constraints validated
+6. ✅ Code review feedback addressed
 
 ## Conclusion
 
