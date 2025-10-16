@@ -44,7 +44,11 @@ target_sources(LibraryManager
         Source/MainComponent.cpp
         Source/MainComponent.h
         Source/DatabaseManager.cpp
-        Source/DatabaseManager.h)
+        Source/DatabaseManager.h
+        Source/FileScanner.cpp
+        Source/FileScanner.h
+        Source/AnalysisWorker.cpp
+        Source/AnalysisWorker.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
