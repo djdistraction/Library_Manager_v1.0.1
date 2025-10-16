@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        build_type: [Release]
+        include:
+          - os: ubuntu-latest
+            artifact_name: linux
+          - os: macos-latest
+            artifact_name: macos
+          - os: windows-latest
+            artifact_name: windows
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    # Linux dependencies - installed BEFORE firewall
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libx11-dev \
+          libxrandr-dev \
+          libxinerama-dev \
+          libxcursor-dev \
+          libfreetype-dev \
+          libgl1-mesa-dev \
+          libasound2-dev \
+          libfontconfig1-dev \
+          libxext-dev \
+          libxrender-dev \
+          libxcomposite-dev \
+          libsqlite3-dev \
+          pkg-config \
+          libchromaprint-dev || true
+    
+    # macOS dependencies - installed BEFORE firewall
+    - name: Install macOS dependencies
+      if: runner.os == 'macOS'
+      run: |
+        brew install cmake sqlite3 pkg-config chromaprint || true
+    
+    # Windows setup - configured BEFORE firewall
+    - name: Setup MSVC (Windows)
+      if: runner.os == 'Windows'
+      uses: microsoft/setup-msbuild@v2
+    
+    - name: Install Windows dependencies
+      if: runner.os == 'Windows'
+      run: |
+        vcpkg install sqlite3:x64-windows
+      shell: pwsh
+    
+    # Configure step
+    - name: Configure CMake (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+    
+    - name: Configure CMake (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+      shell: pwsh
+    
+    # Build step
+    - name: Build (Linux/macOS)
+      if: runner.os != 'Windows'
+      run: |
+        cd build
+        make -j$(if [ "$RUNNER_OS" = "Linux" ]; then nproc; else sysctl -n hw.ncpu; fi)
+    
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        cd build
+        cmake --build . --config ${{ matrix.build_type }} --parallel
+      shell: pwsh
+    
+    # Upload artifacts
+    - name: Upload build artifacts (Linux/macOS)
+      if: runner.os != 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}-build
+        path: build/bin/
+    
+    - name: Upload build artifacts (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}-build
+        path: build/bin/${{ matrix.build_type }}/
