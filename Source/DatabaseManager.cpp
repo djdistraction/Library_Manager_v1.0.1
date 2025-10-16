@@ -391,18 +391,45 @@ DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
         track.id = sqlite3_column_int64(stmt, 0);
-        track.filePath = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
-        track.title = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
-        track.artist = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
-        track.album = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 4));
-        track.genre = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5));
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 1);
+            track.filePath = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 2);
+            track.title = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 3);
+            track.artist = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 4);
+            track.album = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 5);
+            track.genre = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
         track.bpm = sqlite3_column_int(stmt, 6);
-        track.key = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7));
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 7);
+            track.key = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
         track.duration = sqlite3_column_double(stmt, 8);
         track.fileSize = sqlite3_column_int64(stmt, 9);
-        track.fileHash = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 10));
-        track.dateAdded = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 11)));
-        track.lastModified = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 12)));
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 10);
+            track.fileHash = val ? juce::CharPointer_UTF8(val) : juce::String();
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 11);
+            track.dateAdded = stringToTime(val ? juce::CharPointer_UTF8(val) : juce::String());
+        }
+        {
+            const char* val = (const char*)sqlite3_column_text(stmt, 12);
+            track.lastModified = stringToTime(val ? juce::CharPointer_UTF8(val) : juce::String());
+        }
     }
     
     sqlite3_finalize(stmt);
