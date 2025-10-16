@@ -21,7 +21,10 @@
 */
 
 #include "AcoustIDFingerprinter.h"
+
+#ifdef HAVE_CHROMAPRINT
 #include <chromaprint.h>
+#endif
 
 //==============================================================================
 AcoustIDFingerprinter::AcoustIDFingerprinter()
@@ -51,6 +54,11 @@ bool AcoustIDFingerprinter::processAudioFile(const juce::File& audioFile,
                                             juce::String& fingerprint,
                                             int& duration)
 {
+#ifndef HAVE_CHROMAPRINT
+    lastError = "Chromaprint library not available - fingerprinting disabled";
+    DBG("[AcoustIDFingerprinter] " << lastError);
+    return false;
+#else
     // Create audio format manager and register formats
     juce::AudioFormatManager formatManager;
     formatManager.registerBasicFormats();
@@ -165,4 +173,5 @@ bool AcoustIDFingerprinter::processAudioFile(const juce::File& audioFile,
     DBG("[AcoustIDFingerprinter] Fingerprint length: " << fingerprint.length() << " characters");
     
     return true;
+#endif
 }
