@@ -49,7 +49,7 @@ int main()
     // Test 2: Add a track
     std::cout << "\nTest 2: Add a track..." << std::endl;
     DatabaseManager::Track track;
-    track.filePath = "/home/user/music/test_track.mp3";
+    track.filePath = juce::File::createTempFile("test_track").getFullPathName() + ".mp3";
     track.title = "Test Track";
     track.artist = "Test Artist";
     track.album = "Test Album";
@@ -126,7 +126,7 @@ int main()
     DatabaseManager::Job job;
     job.jobType = "scan_library";
     job.status = "pending";
-    job.parameters = "{\"path\": \"/home/user/music\"}";
+    job.parameters = "{\"path\": \"" + juce::File::getSpecialLocation(juce::File::userMusicDirectory).getFullPathName() + "\"}";
     job.dateCreated = juce::Time::getCurrentTime();
     job.progress = 0;
     
@@ -159,7 +159,7 @@ int main()
     assert(dbManager.beginTransaction());
     
     DatabaseManager::Track track2;
-    track2.filePath = "/home/user/music/test_track2.mp3";
+    track2.filePath = juce::File::createTempFile("test_track2").getFullPathName() + ".mp3";
     track2.title = "Test Track 2";
     track2.artist = "Test Artist 2";
     track2.dateAdded = juce::Time::getCurrentTime();
