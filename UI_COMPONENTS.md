@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document describes the newly implemented UI components and Rekordbox export functionality for Library Manager v1.0.1.
+This document describes the newly implemented UI components and Rekordbox export functionality for the uniQuE-ui Library Manager.
 
 ## New Components
 

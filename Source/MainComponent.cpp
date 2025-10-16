@@ -1,7 +1,7 @@
 /*
   ==============================================================================
 
-    Library Manager v1.0.1
+    uniQuE-ui Library Manager
     Copyright (C) 2025 uniQuE-ui
 
     This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ MainComponent::MainComponent()
     setSize (1400, 900);
 
     // Setup title label
-    titleLabel.setText ("Library Manager v1.0.1", juce::dontSendNotification);
+    titleLabel.setText ("uniQuE-ui Library Manager", juce::dontSendNotification);
     titleLabel.setFont (juce::FontOptions (28.0f, juce::Font::bold));
     titleLabel.setJustificationType (juce::Justification::centredLeft);
     titleLabel.setColour (juce::Label::textColourId, juce::Colours::white);

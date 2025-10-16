@@ -224,4 +224,4 @@ For support or questions, please open an issue on GitHub.
 
 ---
 
-**Library Manager v1.0.1** - Professional music library management for DJs and audio professionals.
+**uniQuE-ui Library Manager** - Professional music library management for DJs and audio professionals.

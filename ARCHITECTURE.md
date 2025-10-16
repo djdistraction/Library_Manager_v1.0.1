@@ -1,4 +1,4 @@
-# Library Manager v1.0.1 - Architecture Diagram
+# uniQuE-ui Library Manager - Architecture Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This implementation successfully delivers all requirements specified in the problem statement for creating primary UI components and Rekordbox export functionality for Library Manager v1.0.1.
+This implementation successfully delivers all requirements specified in the problem statement for creating primary UI components and Rekordbox export functionality for the uniQuE-ui Library Manager.
 
 ## Deliverables Summary
 
