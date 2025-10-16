@@ -54,6 +54,19 @@ public:
      */
     juce::String getLastError() const { return lastError; }
     
+    /**
+     * Check if Chromaprint library is available.
+     * @return True if fingerprinting is available, false otherwise
+     */
+    static bool isAvailable()
+    {
+        #ifdef HAVE_CHROMAPRINT
+        return true;
+        #else
+        return false;
+        #endif
+    }
+    
 private:
     //==============================================================================
     juce::String lastError;
