@@ -1113,18 +1113,39 @@ DatabaseManager::Job DatabaseManager::getJob(int64_t jobId) const
     if (sqlite3_step(stmt) == SQLITE_ROW)
     {
         job.id = sqlite3_column_int64(stmt, 0);
-        job.jobType = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 1));
-        job.status = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 2));
-        job.parameters = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 3));
-        job.dateCreated = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 4)));
+        {
+            const char* jobTypeText = (const char*)sqlite3_column_text(stmt, 1);
+            job.jobType = jobTypeText ? juce::CharPointer_UTF8(jobTypeText) : juce::String();
+        }
+        {
+            const char* statusText = (const char*)sqlite3_column_text(stmt, 2);
+            job.status = statusText ? juce::CharPointer_UTF8(statusText) : juce::String();
+        }
+        {
+            const char* parametersText = (const char*)sqlite3_column_text(stmt, 3);
+            job.parameters = parametersText ? juce::CharPointer_UTF8(parametersText) : juce::String();
+        }
+        {
+            const char* dateCreatedText = (const char*)sqlite3_column_text(stmt, 4);
+            job.dateCreated = dateCreatedText ? stringToTime(juce::CharPointer_UTF8(dateCreatedText)) : juce::Time();
+        }
         
         if (sqlite3_column_type(stmt, 5) != SQLITE_NULL)
-            job.dateStarted = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 5)));
+        {
+            const char* dateStartedText = (const char*)sqlite3_column_text(stmt, 5);
+            job.dateStarted = dateStartedText ? stringToTime(juce::CharPointer_UTF8(dateStartedText)) : juce::Time();
+        }
         
         if (sqlite3_column_type(stmt, 6) != SQLITE_NULL)
-            job.dateCompleted = stringToTime(juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 6)));
+        {
+            const char* dateCompletedText = (const char*)sqlite3_column_text(stmt, 6);
+            job.dateCompleted = dateCompletedText ? stringToTime(juce::CharPointer_UTF8(dateCompletedText)) : juce::Time();
+        }
         
-        job.errorMessage = juce::CharPointer_UTF8((const char*)sqlite3_column_text(stmt, 7));
+        {
+            const char* errorMessageText = (const char*)sqlite3_column_text(stmt, 7);
+            job.errorMessage = errorMessageText ? juce::CharPointer_UTF8(errorMessageText) : juce::String();
+        }
         job.progress = sqlite3_column_int(stmt, 8);
     }
     
