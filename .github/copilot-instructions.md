@@ -6,7 +6,7 @@ This project is a Java-based library management system. It is built using Apache
 
 - **Language:** Java
 - **Build Tool:** Apache Maven
-- **Testing:** JUnit
+- **Testing:** JUnit 5
 
 ## Project Structure
 
