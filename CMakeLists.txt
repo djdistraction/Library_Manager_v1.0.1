@@ -42,7 +42,9 @@ target_sources(LibraryManager
     PRIVATE
         Source/Main.cpp
         Source/MainComponent.cpp
-        Source/MainComponent.h)
+        Source/MainComponent.h
+        Source/DatabaseManager.cpp
+        Source/DatabaseManager.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
