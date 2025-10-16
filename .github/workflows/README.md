@@ -93,11 +93,12 @@ sudo apt-get install act
 
 # Using the install script (verify the script first):
 # Visit https://github.com/nektos/act/blob/master/install.sh to review
-curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
-# Or download and install manually:
+# Or download and install manually (most secure):
 # 1. Download from https://github.com/nektos/act/releases
-# 2. Extract and move to /usr/local/bin/
+# 2. Verify checksums
+# 3. Extract and move to /usr/local/bin/
 ```
 
 **macOS:**
