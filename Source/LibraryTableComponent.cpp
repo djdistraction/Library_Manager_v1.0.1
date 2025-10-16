@@ -21,6 +21,7 @@
 */
 
 #include "LibraryTableComponent.h"
+#include "BatchMetadataEditor.h"
 
 //==============================================================================
 LibraryTableComponent::LibraryTableComponent(DatabaseManager& dbManager)
@@ -175,4 +176,62 @@ juce::var LibraryTableComponent::getDragSourceDescription(const juce::SparseSet<
     
     // Return the array as a variant
     return juce::var(trackIds);
+}
+
+void LibraryTableComponent::cellClicked(int rowNumber, int columnId, const juce::MouseEvent& e)
+{
+    juce::ignoreUnused(rowNumber, columnId);
+    
+    if (e.mods.isPopupMenu())
+    {
+        // Show context menu
+        juce::PopupMenu menu;
+        
+        auto selectedRows = table.getSelectedRows();
+        
+        if (selectedRows.size() > 1)
+        {
+            menu.addItem(1, "Batch Edit Metadata (" + juce::String(selectedRows.size()) + " tracks)");
+            menu.addSeparator();
+        }
+        
+        menu.addItem(2, "View Track Details");
+        menu.addItem(3, "Remove from Library");
+        
+        menu.showMenuAsync(juce::PopupMenu::Options(), [this, selectedRows](int result)
+        {
+            switch (result)
+            {
+                case 1: // Batch edit
+                {
+                    std::vector<int64_t> trackIds;
+                    for (int i = 0; i < selectedRows.size(); ++i)
+                    {
+                        int row = selectedRows[i];
+                        if (row >= 0 && row < static_cast<int>(tracks.size()))
+                        {
+                            trackIds.push_back(tracks[row].id);
+                        }
+                    }
+                    
+                    if (!trackIds.empty())
+                    {
+                        BatchMetadataEditor editor(databaseManager, trackIds);
+                        if (editor.showModal())
+                        {
+                            // Refresh the table to show updated metadata
+                            refreshTableContent();
+                        }
+                    }
+                    break;
+                }
+                case 2: // View details
+                    DBG("View track details");
+                    break;
+                case 3: // Remove
+                    DBG("Remove from library");
+                    break;
+            }
+        });
+    }
 }

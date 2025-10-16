@@ -48,6 +48,9 @@ public:
     // Drag and drop support
     juce::var getDragSourceDescription(const juce::SparseSet<int>& selectedRows) override;
     
+    // Context menu and batch operations
+    void cellClicked(int rowNumber, int columnId, const juce::MouseEvent& e) override;
+    
     void refreshTableContent();
     void setSearchFilter(const juce::String& searchText);
     

@@ -71,7 +71,9 @@ target_sources(LibraryManager
         Source/OnboardingComponent.cpp
         Source/OnboardingComponent.h
         Source/RekordboxExporter.cpp
-        Source/RekordboxExporter.h)
+        Source/RekordboxExporter.h
+        Source/BatchMetadataEditor.cpp
+        Source/BatchMetadataEditor.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData
