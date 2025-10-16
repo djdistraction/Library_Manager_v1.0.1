@@ -35,8 +35,14 @@ DatabaseManager::~DatabaseManager()
 //==============================================================================
 bool DatabaseManager::initialize(const juce::File& databaseFile)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     // Close any existing connection
-    close();
+    if (db != nullptr)
+    {
+        sqlite3_close(db);
+        db = nullptr;
+    }
     
     // Check if database file exists
     bool databaseExists = databaseFile.existsAsFile();
@@ -112,6 +118,8 @@ bool DatabaseManager::initialize(const juce::File& databaseFile)
 
 void DatabaseManager::close()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (db != nullptr)
     {
         sqlite3_close(db);
@@ -122,6 +130,7 @@ void DatabaseManager::close()
 
 bool DatabaseManager::isOpen() const
 {
+    const juce::ScopedLock lock(dbMutex);
     return db != nullptr;
 }
 
@@ -217,6 +226,8 @@ bool DatabaseManager::createTables()
 
 bool DatabaseManager::executeSQL(const juce::String& sql)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -239,6 +250,8 @@ bool DatabaseManager::executeSQL(const juce::String& sql)
 
 bool DatabaseManager::checkTableExists(const juce::String& tableName) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
         return false;
     
@@ -265,6 +278,8 @@ bool DatabaseManager::checkTableExists(const juce::String& tableName) const
 
 bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -320,6 +335,8 @@ bool DatabaseManager::addTrack(const Track& track, int64_t& outId)
 
 bool DatabaseManager::updateTrack(const Track& track)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -373,6 +390,8 @@ bool DatabaseManager::updateTrack(const Track& track)
 
 bool DatabaseManager::deleteTrack(int64_t trackId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -408,6 +427,8 @@ bool DatabaseManager::deleteTrack(int64_t trackId)
 
 DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     Track track;
     
     if (!isOpen())
@@ -481,6 +502,8 @@ DatabaseManager::Track DatabaseManager::getTrack(int64_t trackId) const
 
 std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -524,6 +547,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::getAllTracks() const
 
 std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::String& searchTerm) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -575,6 +600,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::searchTracks(const juce::St
 
 std::vector<DatabaseManager::Track> DatabaseManager::findTracksByFingerprint(const juce::String& fingerprint) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen() || fingerprint.isEmpty())
@@ -625,6 +652,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::findTracksByFingerprint(con
 
 bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -669,6 +698,8 @@ bool DatabaseManager::addVirtualFolder(const VirtualFolder& folder, int64_t& out
 
 bool DatabaseManager::updateVirtualFolder(const VirtualFolder& folder)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -711,6 +742,8 @@ bool DatabaseManager::updateVirtualFolder(const VirtualFolder& folder)
 
 bool DatabaseManager::deleteVirtualFolder(int64_t folderId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -746,6 +779,8 @@ bool DatabaseManager::deleteVirtualFolder(int64_t folderId)
 
 DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     VirtualFolder folder;
     
     if (!isOpen())
@@ -778,6 +813,8 @@ DatabaseManager::VirtualFolder DatabaseManager::getVirtualFolder(int64_t folderI
 
 std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolders() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<VirtualFolder> folders;
     
     if (!isOpen())
@@ -813,6 +850,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getAllVirtualFolder
 
 bool DatabaseManager::addFolderTrackLink(const FolderTrackLink& link, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -858,6 +897,8 @@ bool DatabaseManager::addFolderTrackLink(const FolderTrackLink& link, int64_t& o
 
 bool DatabaseManager::updateFolderTrackLink(const FolderTrackLink& link)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -901,6 +942,8 @@ bool DatabaseManager::updateFolderTrackLink(const FolderTrackLink& link)
 
 bool DatabaseManager::deleteFolderTrackLink(int64_t linkId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -936,6 +979,8 @@ bool DatabaseManager::deleteFolderTrackLink(int64_t linkId)
 
 bool DatabaseManager::removeTrackFromFolder(int64_t folderId, int64_t trackId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -972,6 +1017,8 @@ bool DatabaseManager::removeTrackFromFolder(int64_t folderId, int64_t trackId)
 
 std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t folderId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Track> tracks;
     
     if (!isOpen())
@@ -1020,6 +1067,8 @@ std::vector<DatabaseManager::Track> DatabaseManager::getTracksInFolder(int64_t f
 
 std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getFoldersForTrack(int64_t trackId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<VirtualFolder> folders;
     
     if (!isOpen())
@@ -1060,6 +1109,8 @@ std::vector<DatabaseManager::VirtualFolder> DatabaseManager::getFoldersForTrack(
 
 bool DatabaseManager::addJob(const Job& job, int64_t& outId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1119,6 +1170,8 @@ bool DatabaseManager::addJob(const Job& job, int64_t& outId)
 
 bool DatabaseManager::updateJob(const Job& job)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1176,6 +1229,8 @@ bool DatabaseManager::updateJob(const Job& job)
 
 bool DatabaseManager::deleteJob(int64_t jobId)
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     if (!isOpen())
     {
         lastError = "Database is not open";
@@ -1211,6 +1266,8 @@ bool DatabaseManager::deleteJob(int64_t jobId)
 
 DatabaseManager::Job DatabaseManager::getJob(int64_t jobId) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     Job job;
     
     if (!isOpen())
@@ -1275,6 +1332,8 @@ DatabaseManager::Job DatabaseManager::getJob(int64_t jobId) const
 
 std::vector<DatabaseManager::Job> DatabaseManager::getAllJobs() const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Job> jobs;
     
     if (!isOpen())
@@ -1318,6 +1377,8 @@ std::vector<DatabaseManager::Job> DatabaseManager::getAllJobs() const
 
 std::vector<DatabaseManager::Job> DatabaseManager::getJobsByStatus(const juce::String& status) const
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     std::vector<Job> jobs;
     
     if (!isOpen())
@@ -1366,16 +1427,22 @@ std::vector<DatabaseManager::Job> DatabaseManager::getJobsByStatus(const juce::S
 
 bool DatabaseManager::beginTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("BEGIN TRANSACTION");
 }
 
 bool DatabaseManager::commitTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("COMMIT");
 }
 
 bool DatabaseManager::rollbackTransaction()
 {
+    const juce::ScopedLock lock(dbMutex);
+    
     return executeSQL("ROLLBACK");
 }
 

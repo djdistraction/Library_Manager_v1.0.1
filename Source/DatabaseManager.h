@@ -161,6 +161,7 @@ private:
     //==============================================================================
     sqlite3* db = nullptr;
     juce::String lastError;
+    mutable juce::CriticalSection dbMutex;  // Thread safety for database operations
     
     // Helper methods
     bool createTables();
