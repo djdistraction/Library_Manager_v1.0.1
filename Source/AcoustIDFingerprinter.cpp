@@ -57,8 +57,7 @@ bool AcoustIDFingerprinter::processAudioFile(const juce::File& audioFile,
 #ifndef HAVE_CHROMAPRINT
     // Generate a fallback fingerprint based on file metadata
     // This allows the application to continue functioning even without Chromaprint
-    lastError = "Chromaprint library not available - using fallback fingerprinting";
-    DBG("[AcoustIDFingerprinter] " << lastError);
+    DBG("[AcoustIDFingerprinter] Chromaprint library not available - using fallback fingerprinting");
     
     // Create fallback fingerprint using file hash and basic audio properties
     juce::AudioFormatManager formatManager;
