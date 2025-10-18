@@ -148,14 +148,13 @@ CuePointEditorComponent::CuePointEditorComponent(DatabaseManager& dbManager)
             auto& cue = cuePoints[selectedCueIndex];
             juce::Colour currentColor = juce::Colour::fromString(cue.color);
             
-            // Create a simple color picker dialog instead of using CallOutBox
-            // This avoids the ChangeListener complexity
-            juce::ColourSelector* selector = new juce::ColourSelector(juce::ColourSelector::showColourspace);
+            // Create a color picker dialog with ChangeListener for real-time updates
+            auto selector = std::make_unique<juce::ColourSelector>(juce::ColourSelector::showColourspace);
             selector->setCurrentColour(currentColor);
             selector->setSize(300, 400);
             selector->addChangeListener(this);
             
-            juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selector), 
+            juce::CallOutBox::launchAsynchronously(std::move(selector), 
                                                    colorButton.getScreenBounds(), nullptr);
         }
     };
