@@ -7,8 +7,9 @@ The Library Manager application uses SQLite as its embedded database for storing
 ## Database Location
 
 The database file is automatically created at:
-- **Linux/macOS**: `~/.config/LibraryManager/library.db` or equivalent application data directory
 - **Windows**: `%APPDATA%\LibraryManager\library.db`
+
+This typically resolves to: `C:\Users\<YourUsername>\AppData\Roaming\LibraryManager\library.db`
 
 The database file is created automatically on first run if it doesn't exist.
 

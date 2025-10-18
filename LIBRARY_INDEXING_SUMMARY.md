@@ -134,11 +134,13 @@ The UI allows interactive testing:
 - **JUCE 8.x** (audio framework)
 - **SQLite3** (database)
 - **Chromaprint** (fingerprinting)
-- **pkg-config** (for dependency detection)
 
-### Linux Packages
-```bash
-sudo apt-get install libchromaprint-dev libchromaprint1
+### Windows Dependencies
+Install using vcpkg:
+```powershell
+vcpkg install sqlite3:x64-windows
+# Chromaprint is optional and can be installed if needed
+vcpkg install chromaprint:x64-windows
 ```
 
 ### CMake Configuration
