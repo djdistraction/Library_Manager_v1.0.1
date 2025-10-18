@@ -114,7 +114,6 @@ private:
     double duration = 0.0;
     double currentPosition = 0.0;
     double zoomLevel = 1.0;
-    double scrollOffset = 0.0;
     std::vector<double> cuePoints;
     
     bool isLoaded = false;
