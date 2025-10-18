@@ -76,7 +76,17 @@ target_sources(LibraryManager
         Source/RekordboxExporter.cpp
         Source/RekordboxExporter.h
         Source/BatchMetadataEditor.cpp
-        Source/BatchMetadataEditor.h)
+        Source/BatchMetadataEditor.h
+        Source/WaveformComponent.cpp
+        Source/WaveformComponent.h
+        Source/AudioPreviewComponent.cpp
+        Source/AudioPreviewComponent.h
+        Source/SeratoExporter.cpp
+        Source/SeratoExporter.h
+        Source/TraktorExporter.cpp
+        Source/TraktorExporter.h
+        Source/CuePointEditorComponent.cpp
+        Source/CuePointEditorComponent.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData

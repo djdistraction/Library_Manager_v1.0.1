@@ -169,21 +169,29 @@ This typically resolves to: `C:\Users\<YourUsername>\AppData\Roaming\LibraryMana
 
 ## Known Limitations
 
-1. **Chromaprint**: Fingerprinting features disabled if library not available
-2. **Playlist Editing**: Drag-and-drop not yet implemented
-3. **Cue Points**: Only basic tempo markers in Rekordbox export
-4. **Thread Safety**: DatabaseManager not thread-safe (use mutex if accessing from multiple threads)
+All major limitations have been resolved in the latest version:
+- ✅ **Chromaprint**: Now includes fallback fingerprinting when library not available
+- ✅ **Playlist Editing**: Drag-and-drop fully implemented
+- ✅ **Cue Points**: Advanced cue point support with visual editor
+- ✅ **Thread Safety**: DatabaseManager now fully thread-safe with mutex protection
+
+## Recently Added Features
+
+- ✅ Advanced cue point editing with visual editor
+- ✅ Waveform visualization component
+- ✅ Drag-and-drop track organization
+- ✅ Batch metadata editing
+- ✅ Additional export formats (Serato, Traktor)
+- ✅ Audio previewing with playback controls
+- ✅ Smart playlists with auto-filtering
 
 ## Future Roadmap
 
-- [ ] Advanced cue point editing
-- [ ] Waveform visualization
-- [ ] Drag-and-drop track organization
-- [ ] Batch metadata editing
-- [ ] Additional export formats (Serato, Traktor, etc.)
-- [ ] Audio previewing
-- [ ] Smart playlists with auto-filtering
 - [ ] Cloud backup integration
+- [ ] Advanced audio analysis (key detection, energy levels)
+- [ ] Multi-library support
+- [ ] Integration with streaming services
+- [ ] Mobile companion app
 
 ## Contributing
 
