@@ -79,6 +79,14 @@ target_sources(LibraryManager
         Source/BatchMetadataEditor.h
         Source/WaveformComponent.cpp
         Source/WaveformComponent.h
+        Source/AudioPreviewComponent.cpp
+        Source/AudioPreviewComponent.h
+        Source/SeratoExporter.cpp
+        Source/SeratoExporter.h
+        Source/TraktorExporter.cpp
+        Source/TraktorExporter.h
+        Source/CuePointEditorComponent.cpp
+        Source/CuePointEditorComponent.h)
         Source/TraktorExporter.cpp
         Source/TraktorExporter.h)
 
