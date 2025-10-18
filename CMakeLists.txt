@@ -87,6 +87,8 @@ target_sources(LibraryManager
         Source/TraktorExporter.h
         Source/CuePointEditorComponent.cpp
         Source/CuePointEditorComponent.h)
+        Source/TraktorExporter.cpp
+        Source/TraktorExporter.h)
 
 # Add binary data (if any resources are added later)
 # juce_add_binary_data(LibraryManagerData

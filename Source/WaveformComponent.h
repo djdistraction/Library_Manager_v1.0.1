@@ -118,6 +118,8 @@ private:
     
     bool isLoaded = false;
     juce::String lastError;
+    // Horizontal scroll offset for waveform drawing / future scrolling support
+    double scrollOffset = 0.0;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WaveformComponent)
 };
