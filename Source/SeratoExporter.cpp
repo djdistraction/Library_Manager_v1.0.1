@@ -80,7 +80,12 @@ bool SeratoExporter::exportLibrary(const juce::File& outputDirectory,
         auto folderTracks = databaseManager.getTracksInFolder(folder.id);
         
         juce::File crateFile = subcratesDir.getChildFile(folder.name + ".crate");
-        createCrateFile(crateFile, folder, folderTracks);
+        if (!createCrateFile(crateFile, folder, folderTracks))
+        {
+            lastError = "Failed to create crate file: " + crateFile.getFullPathName() + " for folder: " + folder.name;
+            DBG("[SeratoExporter] " << lastError);
+            return false;
+        }
         
         if (progressCallback)
         {
