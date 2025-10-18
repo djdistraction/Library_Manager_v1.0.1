@@ -227,7 +227,7 @@ void SeratoExporter::writeSeratoString(juce::OutputStream& stream, const juce::S
     
     // Write UTF-16 encoded string
     const juce::String utf16 = str;
-    stream.write(utf16.toWideCharPointer(), length * 2);
+    stream.write(utf16.toWideCharPointer(), static_cast<size_t>(length * 2));
 }
 
 void SeratoExporter::writeSeratoInt32(juce::OutputStream& stream, int32_t value)

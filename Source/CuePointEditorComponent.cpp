@@ -148,12 +148,15 @@ CuePointEditorComponent::CuePointEditorComponent(DatabaseManager& dbManager)
             auto& cue = cuePoints[selectedCueIndex];
             juce::Colour currentColor = juce::Colour::fromString(cue.color);
             
-            auto colourSelector = std::make_unique<juce::ColourSelector>();
-            colourSelector->setCurrentColour(currentColor);
-            colourSelector->addChangeListener(this);
-            colourSelector->setSize(300, 400);
+            // Create a simple color picker dialog instead of using CallOutBox
+            // This avoids the ChangeListener complexity
+            juce::ColourSelector* selector = new juce::ColourSelector(juce::ColourSelector::showColourspace);
+            selector->setCurrentColour(currentColor);
+            selector->setSize(300, 400);
+            selector->addChangeListener(this);
             
-            juce::CallOutBox::launchAsynchronously(std::move(colourSelector), colorButton.getScreenBounds(), nullptr);
+            juce::CallOutBox::launchAsynchronously(std::unique_ptr<juce::Component>(selector), 
+                                                   colorButton.getScreenBounds(), nullptr);
         }
     };
 }
@@ -447,4 +450,18 @@ int CuePointEditorComponent::stringToCueType(const juce::String& str) const
     if (str == "Loop In") return 2;
     if (str == "Loop Out") return 3;
     return 0;
+}
+
+void CuePointEditorComponent::changeListenerCallback(juce::ChangeBroadcaster* source)
+{
+    // Handle color selector changes
+    if (auto* selector = dynamic_cast<juce::ColourSelector*>(source))
+    {
+        if (selectedCueIndex >= 0 && selectedCueIndex < static_cast<int>(cuePoints.size()))
+        {
+            auto newColor = selector->getCurrentColour();
+            cuePoints[selectedCueIndex].color = newColor.toString();
+            updateCuePointDisplay();
+        }
+    }
 }

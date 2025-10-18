@@ -113,7 +113,7 @@ void WaveformComponent::paint(juce::Graphics& g)
     
     // Draw center line
     g.setColour(juce::Colours::grey);
-    g.drawHorizontalLine(bounds.getCentreY(), static_cast<float>(bounds.getX()), static_cast<float>(bounds.getRight()));
+    g.drawHorizontalLine(bounds.getCentreY(), bounds.getX(), bounds.getRight());
     
     // Calculate visible range
     const int numSamples = static_cast<int>(waveformData.size());

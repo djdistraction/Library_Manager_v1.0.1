@@ -263,8 +263,10 @@ void TraktorExporter::writePlaylistNode(juce::XmlElement& parent,
 
 juce::String TraktorExporter::convertKeyToTraktorFormat(const juce::String& key) const
 {
-    // Convert OpenKey/Camelot notation to Traktor format if needed
-    // For now, pass through as-is
+    // Traktor uses standard musical key notation (e.g., "Cm", "F#", "Bbm")
+    // Currently passes through the input as-is since the database already stores
+    // keys in a compatible format. Future enhancement could add conversion from
+    // OpenKey/Camelot notation if needed.
     return key;
 }
 

@@ -85,7 +85,7 @@ void AudioPreviewComponent::setupAudioDevice()
         2,     // stereo output
         nullptr,
         true,  // select default device on failure
-        juce::String(),
+        juce::String(), // Use default device type (empty string)
         nullptr
     );
     

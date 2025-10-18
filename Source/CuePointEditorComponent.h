@@ -40,7 +40,8 @@
     - Real-time preview with audio playback
 */
 class CuePointEditorComponent : public juce::Component,
-                                public juce::TableListBoxModel
+                                public juce::TableListBoxModel,
+                                public juce::ChangeListener
 {
 public:
     CuePointEditorComponent(DatabaseManager& dbManager);
@@ -72,6 +73,9 @@ public:
     void paintRowBackground(juce::Graphics&, int rowNumber, int width, int height, bool rowIsSelected) override;
     void paintCell(juce::Graphics&, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
     void cellClicked(int rowNumber, int columnId, const juce::MouseEvent&) override;
+    
+    // ChangeListener method
+    void changeListenerCallback(juce::ChangeBroadcaster* source) override;
     
 private:
     DatabaseManager& databaseManager;
