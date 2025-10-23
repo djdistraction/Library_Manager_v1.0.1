@@ -187,11 +187,7 @@ void TraktorExporter::writeTrackEntry(juce::XmlElement& collection,
         
         // Tempo
         auto* tempo = entry->createNewChildElement("TEMPO");
-        tempo->setAttribute("BPM", juce::String(track.bpm, 2));
-        tempo->setAttribute("BPM_QUALITY", "100");
-        // Ensure BPM is formatted with two decimal places by constructing a String from a double
         tempo->setAttribute("BPM", juce::String(static_cast<double>(track.bpm), 2));
-        // BPM_QUALITY is an integer attribute - pass an int to avoid overload ambiguity
         tempo->setAttribute("BPM_QUALITY", 100);
     }
     
