@@ -30,6 +30,7 @@
 #include "PlaylistTreeComponent.h"
 #include "OnboardingComponent.h"
 #include "RekordboxExporter.h"
+#include "ToastNotification.h"
 #include <atomic>
 
 //==============================================================================
@@ -48,6 +49,7 @@ public:
     //==============================================================================
     void paint (juce::Graphics&) override;
     void resized() override;
+    bool keyPressed (const juce::KeyPress& key) override;
 
 private:
     //==============================================================================
@@ -56,6 +58,7 @@ private:
     juce::Label statusLabel;
     juce::TextEditor searchBox;
     juce::TextButton scanButton;
+    juce::TextButton recentDirsButton;
     juce::TextButton exportButton;
     juce::TextButton newPlaylistButton;
     juce::Label progressLabel;
@@ -63,6 +66,7 @@ private:
     std::unique_ptr<LibraryTableComponent> libraryTable;
     std::unique_ptr<PlaylistTreeComponent> playlistTree;
     std::unique_ptr<OnboardingComponent> onboardingComponent;
+    std::unique_ptr<ToastNotification> toastNotification;
     
     // Backend components
     std::unique_ptr<DatabaseManager> databaseManager;
@@ -76,6 +80,7 @@ private:
     juce::String currentStatus;
     std::atomic<bool> isScanningActive{false};
     bool showOnboarding = true;
+    juce::StringArray recentDirectories;
     
     // Methods
     void initializeDatabase();
@@ -87,6 +92,13 @@ private:
     void updateProgress();
     void timerCallback() override;
     void onSearchTextChanged();
+    void focusSearchBox();
+    void refreshLibrary();
+    void showToast(const juce::String& message, ToastNotification::Type type = ToastNotification::Type::Info);
+    void loadRecentDirectories();
+    void saveRecentDirectories();
+    void addRecentDirectory(const juce::String& path);
+    void showRecentDirectoriesMenu();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

@@ -29,6 +29,9 @@ MainComponent::MainComponent()
 {
     // Set the main component size
     setSize (1400, 900);
+    
+    // Enable keyboard focus for shortcuts
+    setWantsKeyboardFocus(true);
 
     // Setup title label
     titleLabel.setText ("uniQuE-ui Library Manager", juce::dontSendNotification);
@@ -55,30 +58,46 @@ MainComponent::MainComponent()
     searchBox.setMultiLine (false);
     searchBox.setReturnKeyStartsNewLine (false);
     searchBox.setTextToShowWhenEmpty ("Search library...", juce::Colours::grey);
+    searchBox.setTooltip ("Search tracks by title, artist, album, or genre (Ctrl+F to focus)");
     searchBox.onTextChange = [this] { onSearchTextChanged(); };
     addAndMakeVisible (searchBox);
     
-    // Setup buttons
+    // Setup buttons with tooltips
     scanButton.setButtonText ("Scan Library");
     scanButton.onClick = [this] { startScan(); };
+    scanButton.setTooltip ("Scan a directory to add music files to your library (Ctrl+O)");
     addAndMakeVisible (scanButton);
+    
+    recentDirsButton.setButtonText ("Recent ▾");
+    recentDirsButton.onClick = [this] { showRecentDirectoriesMenu(); };
+    recentDirsButton.setTooltip ("Quickly re-scan recently accessed directories");
+    addAndMakeVisible (recentDirsButton);
     
     exportButton.setButtonText ("Export to Rekordbox");
     exportButton.onClick = [this] { exportToRekordbox(); };
+    exportButton.setTooltip ("Export your library to Rekordbox XML format (Ctrl+E)");
     addAndMakeVisible (exportButton);
     
     newPlaylistButton.setButtonText ("New Playlist");
     newPlaylistButton.onClick = [this] { createNewPlaylist(); };
+    newPlaylistButton.setTooltip ("Create a new playlist/virtual folder (Ctrl+N)");
     addAndMakeVisible (newPlaylistButton);
     
     // Setup progress bar
     addAndMakeVisible (progressBar);
+    
+    // Setup toast notification
+    toastNotification = std::make_unique<ToastNotification>();
+    addAndMakeVisible(*toastNotification);
     
     // Initialize database
     initializeDatabase();
     
     // Check if this is first run
     checkFirstRun();
+    
+    // Load recent directories
+    loadRecentDirectories();
     
     // Start timer for UI updates
     startTimer (500);
@@ -210,6 +229,9 @@ void MainComponent::startScan()
         auto directory = results.getFirst();
         DBG("Starting scan of: " + directory.getFullPathName());
         
+        // Add to recent directories
+        addRecentDirectory(directory.getFullPathName());
+        
         scanButton.setEnabled(false);
         progress = 0.0;
         isScanningActive = true;
@@ -244,6 +266,10 @@ void MainComponent::startScan()
                 // Refresh library table
                 if (libraryTable)
                     libraryTable->refreshTableContent();
+                
+                // Show toast notification
+                showToast("Scan complete! Found " + juce::String(filesFound) + " audio files.", 
+                         ToastNotification::Type::Success);
             });
         });
     });
@@ -309,18 +335,16 @@ void MainComponent::exportToRekordbox()
                         statusLabel.setText("Export complete!", juce::dontSendNotification);
                         statusLabel.setColour(juce::Label::textColourId, juce::Colours::lightgreen);
                         
-                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::InfoIcon,
-                                                               "Export Complete",
-                                                               "Successfully exported to:\n" + result.getFullPathName());
+                        showToast("Export complete! File saved to " + result.getFileName(), 
+                                 ToastNotification::Type::Success);
                     }
                     else
                     {
                         statusLabel.setText("Export failed", juce::dontSendNotification);
                         statusLabel.setColour(juce::Label::textColourId, juce::Colours::red);
                         
-                        juce::AlertWindow::showMessageBoxAsync(juce::AlertWindow::WarningIcon,
-                                                               "Export Failed",
-                                                               "Error: " + rekordboxExporter->getLastError());
+                        showToast("Export failed: " + rekordboxExporter->getLastError(), 
+                                 ToastNotification::Type::Error);
                     }
                 });
             });
@@ -413,6 +437,218 @@ void MainComponent::onSearchTextChanged()
     }
 }
 
+void MainComponent::focusSearchBox()
+{
+    searchBox.grabKeyboardFocus();
+}
+
+void MainComponent::refreshLibrary()
+{
+    if (libraryTable)
+    {
+        libraryTable->refreshTableContent();
+    }
+    if (playlistTree)
+    {
+        playlistTree->refreshTree();
+    }
+}
+
+bool MainComponent::keyPressed(const juce::KeyPress& key)
+{
+    // Ctrl+F or Cmd+F: Focus search box
+    if (key == juce::KeyPress('f', juce::ModifierKeys::commandModifier, 0))
+    {
+        focusSearchBox();
+        return true;
+    }
+    
+    // Ctrl+N or Cmd+N: Create new playlist
+    if (key == juce::KeyPress('n', juce::ModifierKeys::commandModifier, 0))
+    {
+        createNewPlaylist();
+        return true;
+    }
+    
+    // Ctrl+O or Cmd+O: Open/Scan library
+    if (key == juce::KeyPress('o', juce::ModifierKeys::commandModifier, 0))
+    {
+        startScan();
+        return true;
+    }
+    
+    // Ctrl+E or Cmd+E: Export to Rekordbox
+    if (key == juce::KeyPress('e', juce::ModifierKeys::commandModifier, 0))
+    {
+        exportToRekordbox();
+        return true;
+    }
+    
+    // F5: Refresh library
+    if (key == juce::KeyPress::F5Key)
+    {
+        refreshLibrary();
+        return true;
+    }
+    
+    return Component::keyPressed(key);
+}
+
+void MainComponent::showToast(const juce::String& message, ToastNotification::Type type)
+{
+    if (toastNotification)
+    {
+        toastNotification->showMessage(message, type);
+    }
+}
+
+void MainComponent::loadRecentDirectories()
+{
+    auto appDataDir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                        .getChildFile("LibraryManager");
+    auto recentFile = appDataDir.getChildFile("recent_directories.txt");
+    
+    if (recentFile.existsAsFile())
+    {
+        recentDirectories.clear();
+        juce::StringArray lines;
+        recentFile.readLines(lines);
+        
+        // Load up to 5 most recent directories
+        for (int i = 0; i < juce::jmin(5, lines.size()); ++i)
+        {
+            if (lines[i].isNotEmpty() && juce::File(lines[i]).isDirectory())
+            {
+                recentDirectories.add(lines[i]);
+            }
+        }
+    }
+}
+
+void MainComponent::saveRecentDirectories()
+{
+    auto appDataDir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                        .getChildFile("LibraryManager");
+    
+    if (!appDataDir.exists())
+        appDataDir.createDirectory();
+    
+    auto recentFile = appDataDir.getChildFile("recent_directories.txt");
+    
+    juce::String content;
+    for (const auto& dir : recentDirectories)
+    {
+        content += dir + "\n";
+    }
+    
+    recentFile.replaceWithText(content);
+}
+
+void MainComponent::addRecentDirectory(const juce::String& path)
+{
+    // Remove if already exists
+    recentDirectories.removeString(path);
+    
+    // Add to front
+    recentDirectories.insert(0, path);
+    
+    // Keep only 5 most recent
+    while (recentDirectories.size() > 5)
+        recentDirectories.remove(recentDirectories.size() - 1);
+    
+    saveRecentDirectories();
+}
+
+void MainComponent::showRecentDirectoriesMenu()
+{
+    juce::PopupMenu menu;
+    
+    if (recentDirectories.isEmpty())
+    {
+        menu.addItem(1, "No recent directories", false);
+    }
+    else
+    {
+        for (int i = 0; i < recentDirectories.size(); ++i)
+        {
+            juce::String dirPath = recentDirectories[i];
+            juce::String dirName = juce::File(dirPath).getFileName();
+            if (dirName.isEmpty())
+                dirName = dirPath;
+            
+            menu.addItem(i + 10, dirName);
+        }
+        
+        menu.addSeparator();
+        menu.addItem(999, "Clear Recent");
+    }
+    
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&recentDirsButton),
+                      [this](int result)
+    {
+        if (result >= 10 && result < 10 + recentDirectories.size())
+        {
+            int index = result - 10;
+            juce::String dirPath = recentDirectories[index];
+            juce::File directory(dirPath);
+            
+            if (directory.isDirectory())
+            {
+                scanButton.setEnabled(false);
+                progress = 0.0;
+                isScanningActive = true;
+                
+                juce::Thread::launch([this, directory]() {
+                    if (!isScanningActive)
+                        return;
+                        
+                    fileScanner->setProgressCallback([this](int current, int total) {
+                        if (!isScanningActive)
+                            return;
+                            
+                        progress = (double)current / (double)total;
+                        juce::MessageManager::callAsync([this, current, total]() {
+                            if (!isScanningActive)
+                                return;
+                            progressLabel.setText("Scanning: " + juce::String(current) + "/" + juce::String(total),
+                                                juce::dontSendNotification);
+                        });
+                    });
+                    
+                    int filesFound = fileScanner->scanDirectory(directory, true);
+                    
+                    juce::MessageManager::callAsync([this, filesFound]() {
+                        if (!isScanningActive)
+                            return;
+                        DBG("Scan complete: " + juce::String(filesFound) + " files queued");
+                        scanButton.setEnabled(true);
+                        progress = 0.0;
+                        isScanningActive = false;
+                        
+                        if (libraryTable)
+                            libraryTable->refreshTableContent();
+                        
+                        showToast("Scan complete! Found " + juce::String(filesFound) + " audio files.", 
+                                 ToastNotification::Type::Success);
+                    });
+                });
+            }
+            else
+            {
+                showToast("Directory no longer exists: " + dirPath, ToastNotification::Type::Warning);
+                recentDirectories.remove(index);
+                saveRecentDirectories();
+            }
+        }
+        else if (result == 999)
+        {
+            recentDirectories.clear();
+            saveRecentDirectories();
+            showToast("Recent directories cleared", ToastNotification::Type::Info);
+        }
+    });
+}
+
 //==============================================================================
 void MainComponent::paint (juce::Graphics& g)
 {
@@ -447,11 +683,13 @@ void MainComponent::resized()
         titleLabel.setBounds(topBar.removeFromLeft(250).reduced(10, 10));
         
         // Buttons on the right
-        auto buttonArea = topBar.removeFromRight(500).reduced(5);
+        auto buttonArea = topBar.removeFromRight(580).reduced(5);
         newPlaylistButton.setBounds(buttonArea.removeFromRight(120));
         buttonArea.removeFromRight(5);
         exportButton.setBounds(buttonArea.removeFromRight(160));
         buttonArea.removeFromRight(5);
+        recentDirsButton.setBounds(buttonArea.removeFromRight(80));
+        buttonArea.removeFromRight(2);
         scanButton.setBounds(buttonArea.removeFromRight(120));
         
         // Search box

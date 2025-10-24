@@ -152,9 +152,24 @@ void PlaylistTreeComponent::PlaylistItem::itemClicked(const juce::MouseEvent& e)
                     DBG("Rename playlist: " << virtualFolder.name);
                     break;
                 case 2: // Delete
-                    databaseManager.deleteVirtualFolder(virtualFolder.id);
-                    if (auto* parent = getParentItem())
-                        parent->removeSubItem(getIndexInParent());
+                    // Show confirmation dialog before deleting
+                    juce::AlertWindow::showOkCancelBox(
+                        juce::AlertWindow::WarningIcon,
+                        "Delete Playlist",
+                        "Are you sure you want to delete the playlist '" + virtualFolder.name + "'?\n\n"
+                        "This action cannot be undone. The tracks will remain in your library.",
+                        "Delete",
+                        "Cancel",
+                        nullptr,
+                        juce::ModalCallbackFunction::create([this](int result) {
+                            if (result == 1) // User clicked Delete
+                            {
+                                databaseManager.deleteVirtualFolder(virtualFolder.id);
+                                if (auto* parent = getParentItem())
+                                    parent->removeSubItem(getIndexInParent());
+                            }
+                        })
+                    );
                     break;
                 case 3: // View tracks
                     DBG("View tracks in: " << virtualFolder.name);
