@@ -229,8 +229,43 @@ void LibraryTableComponent::cellClicked(int rowNumber, int columnId, const juce:
                     DBG("View track details");
                     break;
                 case 3: // Remove
-                    DBG("Remove from library");
+                {
+                    int numTracks = selectedRows.size();
+                    juce::String message = numTracks > 1
+                        ? "Are you sure you want to remove " + juce::String(numTracks) + " tracks from your library?\n\n"
+                          "This will delete the track records from the database.\n"
+                          "The actual audio files will not be deleted from your computer."
+                        : "Are you sure you want to remove this track from your library?\n\n"
+                          "This will delete the track record from the database.\n"
+                          "The actual audio file will not be deleted from your computer.";
+                    
+                    juce::AlertWindow::showOkCancelBox(
+                        juce::AlertWindow::WarningIcon,
+                        "Remove from Library",
+                        message,
+                        "Remove",
+                        "Cancel",
+                        nullptr,
+                        juce::ModalCallbackFunction::create([this, selectedRows](int result) {
+                            if (result == 1) // User clicked Remove
+                            {
+                                // Delete tracks from database
+                                for (int i = 0; i < selectedRows.size(); ++i)
+                                {
+                                    int row = selectedRows[i];
+                                    if (row >= 0 && row < static_cast<int>(tracks.size()))
+                                    {
+                                        databaseManager.deleteTrack(tracks[row].id);
+                                    }
+                                }
+                                
+                                // Refresh the table
+                                refreshTableContent();
+                            }
+                        })
+                    );
                     break;
+                }
             }
         });
     }
