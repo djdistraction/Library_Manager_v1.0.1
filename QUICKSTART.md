@@ -2,6 +2,10 @@
 
 ## For Windows Users - Simple 3-Step Process
 
+### Optional: Check Prerequisites First
+
+Want to verify your system is ready? Double-click `check-prerequisites.bat` to run a quick check!
+
 ### Step 1: Download
 Download or clone the Library Manager repository to your computer.
 

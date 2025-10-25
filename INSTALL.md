@@ -4,6 +4,16 @@ This installer automates the complete setup, build, and installation process of 
 
 ## 🚀 Quick Start
 
+### Before You Begin
+
+Not sure if your system is ready? Run the prerequisites checker:
+
+```batch
+check-prerequisites.bat
+```
+
+This will verify that you have all required components installed.
+
 ### Option 1: Double-Click Installation (Recommended)
 
 1. **Download or clone** this repository
