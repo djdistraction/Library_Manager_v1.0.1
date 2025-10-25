@@ -170,7 +170,31 @@ By default, the installer uses these locations:
 
 ## 🗑️ Uninstallation
 
-To uninstall Library Manager:
+### Automatic Uninstallation (Recommended)
+
+Simply double-click `uninstall.bat` or run:
+
+```powershell
+.\uninstall.ps1
+```
+
+The uninstaller will:
+- Remove the application files
+- Delete desktop and Start Menu shortcuts
+- Optionally remove the database (you'll be asked)
+
+**Options:**
+```powershell
+# Keep the database (don't ask about removing it)
+.\uninstall.ps1 -KeepDatabase
+
+# Silent uninstallation (removes everything including database)
+.\uninstall.ps1 -NoInteractive
+```
+
+### Manual Uninstallation
+
+If you prefer to uninstall manually:
 
 1. Delete the installation directory (default: `%LOCALAPPDATA%\LibraryManager\`)
 2. Delete desktop shortcut
