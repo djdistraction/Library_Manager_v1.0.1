@@ -40,20 +40,38 @@ The uniQuE-ui Library Manager is a standalone desktop application for Windows, d
 
 (Screenshots will be added after UI testing on a system with display)
 
-## Building from Source
+## Installation
 
-### Prerequisites
+### 🚀 One-Click Installer (Recommended)
+
+The easiest way to install Library Manager is using our automated installer:
+
+1. **Download or clone** this repository
+2. **Double-click** `install.bat`
+3. Follow the on-screen prompts
+4. Launch Library Manager from the desktop shortcut
+
+**Requirements:**
+- Git for Windows
+- Visual Studio 2019 or later with C++ tools
+- CMake (can be auto-installed)
+
+For detailed instructions and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
+
+### Building from Source (Manual)
+
+If you prefer to build manually:
+
+#### Prerequisites
 - CMake 3.22 or higher
 - Visual Studio 2019 or higher with C++20 support
 - JUCE Framework (included as submodule)
 - vcpkg (for dependency management)
 
-### Optional Dependencies
+#### Optional Dependencies
 - Chromaprint (for audio fingerprinting - will be disabled if not found)
 
-### Build Instructions
-
-#### Windows
+#### Windows Build Instructions
 ```powershell
 # Clone repository and submodules
 git clone https://github.com/djdistraction/Library_Manager.git
