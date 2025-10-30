@@ -168,7 +168,9 @@ function Build-Project {
     Push-Location $BuildPath
     
     Write-Info "Running CMake configuration..."
-    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain
+    # Invoke CMake with the call operator and quoted arguments so PowerShell expands the
+    # `$vcpkgToolchain` variable correctly even if the path contains spaces.
+    & cmake .. "-DCMAKE_BUILD_TYPE=Release" "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain"
     
     if ($LASTEXITCODE -ne 0) {
         Pop-Location
