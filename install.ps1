@@ -270,7 +270,36 @@ try {
     # Check/Install CMake
     if (-not $cmakeInstalled) {
         Write-Warning "CMake is not installed"
-        if (-not $NoInteractive) {
+
+        # When running non-interactively, attempt to auto-install CMake so CI and unattended runs work.
+        if ($NoInteractive) {
+            Write-Info "Running in non-interactive mode: attempting to auto-install CMake..."
+            $installOk = $false
+
+            try {
+                $installOk = Install-CMake
+            }
+            catch {
+                $installOk = $false
+            }
+
+            # Re-check presence of cmake after the install attempt
+            $cmakeInstalled = Test-Command "cmake"
+
+            if (-not $cmakeInstalled) {
+                # If we are not elevated, recommend running as Administrator
+                if (-not $isAdmin) {
+                    Write-Error "CMake installation failed or requires elevation. Please re-run this script from an elevated PowerShell (Run as Administrator) or install CMake manually from https://cmake.org/download/"
+                    exit 1
+                }
+                else {
+                    Write-Error "CMake installation failed. Please install CMake manually from https://cmake.org/download/ and re-run this script."
+                    exit 1
+                }
+            }
+        }
+        else {
+            # Interactive mode: ask the user for consent to install
             $response = Read-Host "Would you like to install CMake automatically? (y/n)"
             if ($response -eq 'y') {
                 if (-not (Install-CMake)) {
@@ -282,10 +311,6 @@ try {
                 Write-Error "CMake is required. Please install it from https://cmake.org/download/"
                 exit 1
             }
-        }
-        else {
-            Write-Error "CMake is required but automatic installation is disabled in non-interactive mode"
-            exit 1
         }
     }
     
